@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mourão Consultoria</title>
+
+      <!-- Ícones do PWA e Navegador (Favicon) -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icone192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icone512.png">
+  <link rel="apple-touch-icon" href="icone192.png">
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#14B8A6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Exec Pro">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    /* RESET E FONTES */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    :root {
+      --primary: #0b1c30;
+      --mint: #14B8A6;
+      --coral: #EF4444;
+      --slate: #64748B;
+      --white: #FFFFFF;
+      --surface: #f8f9ff;
+      --border: #e5eeff;
+      --purple: #A855F7;
+      --blue: #3980f4;
+    }
+
+    body {
+      background-color: var(--surface);
+      color: var(--primary);
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 100px; /* Espaço para a Tab Bar */
+    }
+
+    /* FULL SCREEN LOADER */
+    #pageLoader {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .spinner-large {
+      width: 40px; height: 40px;
+      border: 4px solid rgba(20, 184, 166, 0.2);
+      border-top-color: var(--mint);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    #pageLoader p {
+      margin-top: 15px; color: var(--slate); font-weight: 700; font-size: 14px;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--white);
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .row-between { display: flex; justify-content: space-between; align-items: center; }
+    
+    .timezone-badge {
+      display: flex; align-items: center; gap: 4px;
+      background: #F1F5F9; padding: 4px 8px; border-radius: 10px;
+    }
+    .timezone-badge span { font-size: 8px; font-weight: 900; color: var(--slate); }
+
+    .logout-btn {
+      display: flex; align-items: center; gap: 4px;
+      background: #FFF1F2; padding: 6px 12px; border-radius: 10px;
+      cursor: pointer; border: none; outline: none;
+    }
+    .logout-btn span { color: var(--coral); font-size: 10px; font-weight: 900; }
+
+    .nav-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin: 25px 0 20px 0;
+    }
+    .nav-btn {
+      width: 44px; height: 44px; border-radius: 14px;
+      background: #F8FAFC; border: 1px solid #F1F5F9;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .month-box { text-align: center; }
+    .month-name { font-size: 18px; font-weight: 900; color: var(--primary); letter-spacing: 1px; }
+    .year-name { font-size: 12px; font-weight: 700; color: var(--slate); text-transform: uppercase; }
+
+    .summary { display: flex; gap: 12px; }
+    .summary-box {
+      flex: 1; background: var(--white); padding: 12px;
+      border-radius: 12px; border: 1px solid #F1F5F9;
+    }
+    .summary-label { font-size: 8px; font-weight: 900; color: var(--slate); margin-bottom: 4px; }
+    .summary-val { font-size: 14px; font-weight: 900; }
+    .val-mint { color: var(--mint); }
+    .val-coral { color: var(--coral); }
+
+    /* CONTENT & SECTIONS */
+    .content { padding: 10px 20px 40px 20px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 15px;}
+    .section-title { font-size: 13px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
+    .today-label { font-size: 10px; color: var(--slate); font-weight: 700; }
+
+    /* CARDS */
+    .item-card {
+      background: var(--white); padding: 16px; border-radius: 18px;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; border: 1px solid #F8FAFC;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .item-card:active { transform: scale(0.98); }
+    .item-salario-border { border-left: 4px solid var(--purple); }
+    
+    .item-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; margin-right: 12px;
+    }
+    .icon-salario { background: rgba(168, 85, 247, 0.1); color: var(--purple); }
+    .icon-conta { background: rgba(57, 128, 244, 0.1); color: var(--blue); }
+
+    .item-desc { font-size: 11px; font-weight: 800; margin-bottom: 2px; text-transform: uppercase; }
+    .item-time { font-size: 9px; font-weight: 700; }
+    .item-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end;}
+    .item-val { font-size: 14px; font-weight: 900; }
+
+    .pill {
+      display: flex; align-items: center; padding: 3px 8px; border-radius: 10px;
+      gap: 4px; margin-top: 4px; border: 1px solid transparent;
+    }
+    .pill-txt { font-size: 8px; font-weight: 900; }
+
+    /* EMPLOYEE CARD */
+    .employee-card {
+      background: var(--white); padding: 16px; border-radius: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px; border-bottom: 1px solid #F1F5F9; cursor: pointer;
+    }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: rgba(168, 85, 247, 0.15); display: flex; align-items: center; justify-content: center;
+      margin-right: 15px; color: var(--purple); font-size: 16px; font-weight: 900;
+    }
+    .emp-name { font-size: 14px; font-weight: 800; text-transform: uppercase; }
+    .emp-sub { font-size: 10px; color: var(--slate); }
+    .emp-salary { font-size: 14px; font-weight: 900; color: var(--purple); }
+
+    /* PROGRESS CARD */
+    .progress-card {
+      background: var(--primary); padding: 20px; border-radius: 24px; margin-top: 15px;
+    }
+    .prog-title { color: var(--white); font-size: 11px; font-weight: 900; margin-bottom: 15px; }
+    .prog-bar-bg { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 10px; overflow: hidden;}
+    .prog-bar-fill { height: 100%; background: var(--mint); transition: width 0.3s ease; }
+    .prog-sub { color: rgba(255,255,255,0.6); font-size: 9px; font-weight: bold; }
+
+    /* EMPTY STATE */
+    .empty-state { display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 10px; }
+    .empty-text { font-size: 12px; font-weight: 700; color: var(--slate); }
+
+    /* FAB */
+    .fab {
+      position: fixed; bottom: 110px; right: 24px;
+      width: 64px; height: 64px; border-radius: 22px;
+      background: var(--mint); display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2); cursor: pointer; border: none; color: white;
+      transition: background 0.3s; z-index: 90;
+    }
+
+    /* TABS BOTTOM */
+    .tab-bar {
+      position: fixed; bottom: 0; left: 0; width: 100%; height: 90px;
+      background: var(--white); border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around; padding-top: 12px; z-index: 90;
+    }
+    .tab-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; border: none; background: transparent;}
+    .tab-text { font-size: 9px; font-weight: 900; margin-top: 4px; color: var(--slate); }
+    .tab-item.active .tab-text { color: var(--mint); }
+    .tab-item.active.equipe .tab-text { color: var(--purple); }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(11, 28, 48, 0.7); display: none; flex-direction: column; justify-content: flex-end;
+      z-index: 100; opacity: 0; transition: opacity 0.3s;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .modal-content {
+      background: var(--white); border-radius: 32px 32px 0 0;
+      padding: 24px; padding-bottom: 50px;
+      transform: translateY(100%); transition: transform 0.3s ease-out;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+    
+    .modal-indicator { width: 40px; height: 4px; background: #E2E8F0; border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title { font-size: 20px; font-weight: 900; }
+    .modal-sub { font-size: 11px; color: var(--slate); }
+
+    /* FORMS NO MODAL */
+    .form-container { display: flex; flex-direction: column; gap: 15px; }
+    .label { font-size: 9px; font-weight: 900; color: var(--slate); letter-spacing: 1px; margin-bottom: 5px; display: block;}
+    .input {
+      background: #F8FAFC; border-radius: 14px; padding: 15px;
+      font-size: 14px; font-weight: 700; color: var(--primary);
+      border: 1px solid #F1F5F9; width: 100%; outline: none;
+    }
+    
+    .toggle-row { display: flex; gap: 5px; }
+    .toggle-btn {
+      flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #F1F5F9;
+      background: transparent; cursor: pointer; font-size: 10px; font-weight: 900; color: var(--slate);
+      transition: all 0.2s ease;
+    }
+    .toggle-btn.active { background: var(--purple); border-color: var(--purple); color: white; }
+    
+    .toggle-btn.mint-active.active { background: var(--mint); border-color: var(--mint); color: white; }
+
+    .status-row { display: flex; gap: 5px; margin-top: 5px; }
+    .status-option {
+      flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #F1F5F9;
+      background: transparent; cursor: pointer; font-size: 9px; font-weight: 900; color: var(--slate);
+    }
+    .status-option.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .modal-actions { display: flex; margin-top: 10px; gap: 10px; }
+    .btn-delete {
+      background: var(--coral); width: 60px; height: 60px; border-radius: 16px;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;
+    }
+    .btn-save {
+      flex: 1; height: 60px; border-radius: 16px; border: none; cursor: pointer;
+      background: var(--mint); color: white; font-size: 12px; font-weight: 900;
+    }
+
+    /* SALARY CARD IN MODAL */
+    .salary-card {
+      background: #F8FAFC; padding: 20px; border-radius: 20px; margin-bottom: 15px;
+      border: 1px dashed var(--slate);
+    }
+    .salary-name-text { font-size: 18px; font-weight: 900; margin-bottom: 15px; text-transform: uppercase;}
+    .salary-val-text { font-size: 15px; font-weight: 800; }
+    .salary-input {
+      background: white; padding: 12px; border-radius: 12px; font-size: 18px; font-weight: 900;
+      color: var(--mint); border: 2px solid var(--mint); width: 100%; outline: none;
+    }
+    .btn-pay-huge {
+      height: 70px; border-radius: 20px; display: flex; align-items: center; justify-content: center; gap: 12px;
+      background: var(--mint); border: none; cursor: pointer; width: 100%; color: white; font-size: 14px; font-weight: 900;
+    }
+    .hint { font-size: 10px; color: var(--slate); text-align: center; margin-top: 15px; font-weight: 700; }
+
+    /* UTILS */
+    .hidden { display: none !important; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- SPINNER GLOBAL -->
+  <div id="pageLoader">
+    <div class="spinner-large"></div>
+    <p>Sincronizando com a Nuvem...</p>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="row-between">
+      <div class="timezone-badge">
+        <i data-lucide="map-pin" color="#64748B" width="10" height="10"></i>
+        <span>MANAUS (AMT UTC-4)</span>
+      </div>
+      <button class="logout-btn" id="btn-logout">
+        <i data-lucide="log-out" color="#EF4444" width="16" height="16"></i>
+        <span>Sair</span>
+      </button>
+    </div>
+
+    <div class="nav-row" id="top-nav-row">
+      <button class="nav-btn" id="btn-prev-date"><i data-lucide="chevron-left" color="#0b1c30"></i></button>
+      <div class="month-box">
+        <div class="month-name" id="display-date-main">MAIO</div>
+        <div class="year-name" id="display-date-sub">2026</div>
+      </div>
+      <button class="nav-btn" id="btn-next-date"><i data-lucide="chevron-right" color="#0b1c30"></i></button>
+    </div>
+
+    <div class="summary" id="top-summary">
+      <div class="summary-box">
+        <div class="summary-label" id="label-pago">PAGO NO MÊS</div>
+        <div class="summary-val val-mint" id="val-pago">R$ 0,00</div>
+      </div>
+      <div class="summary-box">
+        <div class="summary-label">EM ABERTO</div>
+        <div class="summary-val val-coral" id="val-aberto">R$ 0,00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="content" id="main-content">
+    <!-- Renderizado via JS -->
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fab-add">
+    <i data-lucide="plus" stroke-width="3"></i>
+  </button>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-item active" data-tab="inicio">
+      <i data-lucide="layout-dashboard" class="tab-icon" color="#14B8A6"></i>
+      <span class="tab-text">HOME</span>
+    </button>
+    <button class="tab-item equipe" data-tab="equipe">
+      <i data-lucide="users" class="tab-icon" color="#CBD5E1"></i>
+      <span class="tab-text">EQUIPE</span>
+    </button>
+    <button class="tab-item" data-tab="extrato">
+      <i data-lucide="receipt" class="tab-icon" color="#CBD5E1"></i>
+      <span class="tab-text">EXTRATO</span>
+    </button>
+  </div>
+
+  <!-- MODAL GERAL -->
+  <div class="modal-overlay" id="main-modal">
+    <div class="modal-content">
+      <div class="modal-indicator"></div>
+      <div class="section-header" style="margin-top: 0">
+        <div>
+          <div class="modal-title" id="modal-title">Novo</div>
+          <div class="modal-sub">Sincronizado na Nuvem</div>
+        </div>
+        <button id="btn-close-modal" style="background:none;border:none;cursor:pointer;">
+          <i data-lucide="x" color="#64748B"></i>
+        </button>
+      </div>
+
+      <!-- CONTAINER PARA PAGAR SALARIO -->
+      <div id="modal-pay-salary" class="hidden">
+        <div class="salary-card">
+          <span class="label">NOME DO BENEFICIÁRIO</span>
+          <div class="salary-name-text" id="pay-name">NOME</div>
+          <div class="row-between">
+            <div style="flex:1;">
+              <span class="label">VALOR EFETUADO (R$)</span>
+              <input type="number" class="salary-input" id="pay-val" step="0.01">
+            </div>
+            <div style="text-align: right; margin-left: 15px;">
+              <span class="label">VENCIMENTO</span>
+              <div class="salary-val-text" id="pay-venc">00/00</div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="pay-vt-info" class="hidden" style="color: var(--mint); text-align: center; font-size: 11px; font-weight: 800; margin-bottom: 15px;">
+          <!-- Informação do VT aparece aqui -->
+        </div>
+
+        <button class="btn-pay-huge" id="btn-confirm-pay">
+          <i data-lucide="dollar-sign"></i>
+          <span id="txt-confirm-pay">CONFIRMAR PAGAMENTO</span>
+        </button>
+        <div class="hint" id="pay-hint">* A data do pagamento será registrada no momento do clique.</div>
+      </div>
+
+      <!-- CONTAINER PARA FORMULÁRIOS (CONTA / RH) -->
+      <div id="modal-form-crud" class="hidden">
+        <div class="form-container">
+          <span class="label">DESCRIÇÃO / NOME</span>
+          <input type="text" class="input" id="form-desc" placeholder="Ex: ALUGUEL / JOÃO SILVA">
+          
+          <div class="row-between" style="gap:10px;">
+            <div style="flex:1;">
+              <span class="label">VALOR (R$)</span>
+              <input type="number" class="input" id="form-val" placeholder="0.00" step="0.01">
+            </div>
+            
+            <div style="flex:1;" id="wrapper-venc">
+              <span class="label">DATA VENC.</span>
+              <input type="text" class="input" id="form-venc" placeholder="DD/MM/AAAA">
+            </div>
+
+            <div style="flex:1;" id="wrapper-freq" class="hidden">
+              <span class="label">FREQUÊNCIA SALÁRIO</span>
+              <div class="toggle-row">
+                <button class="toggle-btn freq-btn active" data-val="MENSAL">Dia 30</button>
+                <button class="toggle-btn freq-btn" data-val="QUINZENAL">15 e 30</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- NOVO: VALE TRANSPORTE (SÓ NO RH) -->
+          <div id="wrapper-vt" class="hidden" style="margin-top: 5px;">
+            <span class="label">VALE TRANSPORTE</span>
+            <div class="toggle-row">
+              <button class="toggle-btn vt-btn active" data-val="NONE">Não Recebe</button>
+              <button class="toggle-btn vt-btn" data-val="WEEKLY">Semanal</button>
+              <button class="toggle-btn vt-btn" data-val="MONTHLY">No Salário</button>
+            </div>
+          </div>
+
+          <!-- NOVO: TIPO DE CONTA (SÓ NA CONTA) -->
+          <div id="wrapper-bill-type" class="hidden" style="margin-top: 5px;">
+            <span class="label">TIPO DE DESPESA</span>
+            <div class="toggle-row">
+              <button class="toggle-btn mint-active type-btn active" data-val="SINGLE">Única</button>
+              <button class="toggle-btn mint-active type-btn" data-val="FIXED">Fixa Mensal</button>
+            </div>
+          </div>
+
+          <div class="status-row" id="wrapper-status">
+            <button class="status-option active" data-val="NO PRAZO">NO PRAZO</button>
+            <button class="status-option" data-val="PAGO">PAGO</button>
+            <button class="status-option" data-val="VENCIDO">VENCIDO</button>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-delete hidden" id="btn-delete"><i data-lucide="trash-2"></i></button>
+            <button class="btn-save" id="btn-save">SALVAR DADOS</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Importa o Supabase configurado -->
+  <script src="supabase.js"></script>
+
+  <script>
+    // ==========================================
+    // VARIÁVEIS DE ESTADO
+    // ==========================================
+    // Captura a data real atual, forçando o fuso horário de Manaus (AMT)
+    const getManausToday = () => {
+      const now = new Date();
+      const options = { timeZone: 'America/Manaus', year: 'numeric', month: 'numeric', day: 'numeric' };
+      const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(now);
+      
+      const year = parseInt(parts.find(p => p.type === 'year').value);
+      const month = parseInt(parts.find(p => p.type === 'month').value) - 1; // O JS conta meses de 0 a 11
+      const day = parseInt(parts.find(p => p.type === 'day').value);
+      
+      return new Date(year, month, day);
+    };
+
+    const HOJE = getManausToday();
+    let currentUser = null;
+    
+    let activeTab = 'inicio';
+    
+    // Controles de Data Independentes por Tab
+    let homeDate = new Date(HOJE);       // Para a tab 'inicio' (Navega por dia)
+    let extratoDate = new Date(HOJE);    // Para a tab 'extrato' (Navega por mês)
+    
+    let employees = [];
+    let contas = [];
+    let paymentHistory = {};
+    
+    let modalMode = 'CONTA';
+    let editId = null;
+    let selectedItem = null;
+
+    let fFreq = 'MENSAL';
+    let fVtType = 'NONE';
+    let fBillType = 'SINGLE';
+    let fStatus = 'NO PRAZO';
+
+    // ==========================================
+    // LÓGICA DE CALENDÁRIO CORPORATIVO (MANAUS)
+    // ==========================================
+    const isFeriado = (date) => {
+      if (!date) return false;
+      const dia = date.getDate().toString().padStart(2, '0');
+      const mes = (date.getMonth() + 1).toString().padStart(2, '0');
+      const strDate = `${dia}/${mes}`;
+      const feriadosManaus = [
+        '01/01', '16/02', '17/02', '18/02', '03/04', '21/04', '01/05',
+        '04/06', '05/09', '07/09', '12/10', '24/10', '02/11', '15/11',
+        '20/11', '08/12', '25/12'
+      ];
+      return feriadosManaus.includes(strDate);
+    };
+
+    const isDiaUtil = (date) => {
+      if (!date) return false;
+      const day = date.getDay();
+      return day !== 0 && day !== 6 && !isFeriado(date);
+    };
+
+    const getPagamentoDate = (year, month, targetDay) => {
+      const diasNoMes = new Date(year, month + 1, 0).getDate();
+      const diaReal = Math.min(targetDay, diasNoMes); 
+      let date = new Date(year, month, diaReal);
+      while (!isDiaUtil(date)) {
+        date.setDate(date.getDate() - 1);
+      }
+      return date;
+    };
+
+    const getWorkingDaysInMonth = (year, month) => {
+      let count = 0;
+      let d = new Date(year, month, 1);
+      while (d.getMonth() === month) {
+        if (isDiaUtil(d)) count++;
+        d.setDate(d.getDate() + 1);
+      }
+      return count;
+    };
+
+    const getFridaysInMonth = (year, month) => {
+      let fridays = [];
+      let d = new Date(year, month, 1);
+      while (d.getMonth() === month) {
+        if (d.getDay() === 5) {
+           let payDate = new Date(d);
+           while(!isDiaUtil(payDate)) { payDate.setDate(payDate.getDate() - 1); }
+           fridays.push(new Date(payDate));
+        }
+        d.setDate(d.getDate() + 1);
+      }
+      return fridays;
+    };
+
+    const formatDataBR = (date) => {
+      if (!date) return '';
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    };
+    
+    const getDiaSemana = (date) => {
+      if (!date) return '';
+      const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+      return dias[date.getDay()];
+    };
+
+    const dateToDB = (strBR) => {
+      if (!strBR) return null;
+      const [d, m, y] = strBR.split('/');
+      return `${y}-${m}-${d}`;
+    };
+
+    const dbToDateBR = (strDB) => {
+      if (!strDB) return '';
+      const [y, m, d] = strDB.split('-');
+      return `${d}/${m}/${y}`;
+    };
+
+    const getNomeMes = (index) => {
+      return ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"][index];
+    };
+
+    // ==========================================
+    // INICIALIZAÇÃO E SUPABASE
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+
+      if (!window.supabase) {
+        alert("Erro: Supabase não carregado.");
+        return;
+      }
+
+      // Verifica Autenticação
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = 'index.html';
+        return;
+      }
+      currentUser = session.user;
+
+      // Eventos Estáticos da UI
+      document.getElementById('btn-logout').addEventListener('click', handleLogout);
+      document.getElementById('btn-prev-date').addEventListener('click', () => changeDate(-1));
+      document.getElementById('btn-next-date').addEventListener('click', () => changeDate(1));
+      document.getElementById('fab-add').addEventListener('click', () => handleOpenModal(activeTab === 'equipe' ? 'RH' : 'CONTA'));
+      document.getElementById('btn-close-modal').addEventListener('click', () => setModalOpen(false));
+      
+      document.getElementById('btn-save').addEventListener('click', handleSave);
+      document.getElementById('btn-delete').addEventListener('click', handleDelete);
+      document.getElementById('btn-confirm-pay').addEventListener('click', togglePayment);
+
+      // Tabs Logic
+      document.querySelectorAll('.tab-item').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          const tabName = e.currentTarget.getAttribute('data-tab');
+          setActiveTab(tabName);
+        });
+      });
+
+      // Formulários Toggles
+      setupToggleGroups('.freq-btn', val => fFreq = val);
+      setupToggleGroups('.vt-btn', val => fVtType = val);
+      setupToggleGroups('.type-btn', val => fBillType = val);
+      
+      document.querySelectorAll('#wrapper-status .status-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.querySelectorAll('#wrapper-status .status-option').forEach(b => b.classList.remove('active', 'btn-primary'));
+          btn.classList.add('active');
+          fStatus = btn.getAttribute('data-val');
+          btn.style.backgroundColor = fStatus === 'PAGO' ? '#14B8A6' : (fStatus === 'VENCIDO' ? '#EF4444' : '#0b1c30');
+          btn.style.borderColor = btn.style.backgroundColor;
+        });
+      });
+
+      await fetchData();
+    });
+
+    function setupToggleGroups(selector, callback) {
+      document.querySelectorAll(selector).forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.querySelectorAll(selector).forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          callback(btn.getAttribute('data-val'));
+        });
+      });
+    }
+
+    // ==========================================
+    // BUSCA DE DADOS
+    // ==========================================
+    async function fetchData() {
+      showLoader(true);
+      try {
+        const [empRes, billsRes, paysRes] = await Promise.all([
+          supabase.from('fin_employees').select('*'),
+          supabase.from('fin_bills').select('*'),
+          supabase.from('fin_salary_payments').select('*')
+        ]);
+
+        if (empRes.data) employees = empRes.data;
+        if (billsRes.data) {
+          contas = billsRes.data.map(b => ({
+            id: b.id, desc: b.description, val: Number(b.val),
+            venc: dbToDateBR(b.venc), status: b.status, paid_at: b.paid_at
+          }));
+        }
+        if (paysRes.data) {
+          paymentHistory = {};
+          paysRes.data.forEach(p => {
+            paymentHistory[p.instance_id] = { dbId: p.id, valorPago: Number(p.amount_paid), status: 'PAGO', paid_at: p.paid_at };
+          });
+        }
+        
+        updateUI();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    // ==========================================
+    // REGRAS E CÁLCULOS
+    // ==========================================
+    function getRegistrosFull(year, month) {
+      let list = [];
+
+      // Filtrar Contas que pertencem a esse mês
+      contas.forEach(c => {
+        if(!c.venc) return;
+        const [d, m, y] = c.venc.split('/').map(Number);
+        if (m === month + 1 && y === year) {
+          list.push({ ...c, tipo: 'CONTA', rawDate: new Date(y, m - 1, d) });
+        }
+      });
+
+      // Gerar Folha e VTs
+      employees.forEach(emp => {
+        const mesKey = `${year}-${month}`;
+        const empSalary = Number(emp.salary);
+        const vtType = emp.vt_type || 'NONE';
+        
+        let vtValMonthly = 0;
+        let wDays = 0;
+
+        // LÓGICA VALE TRANSPORTE
+        if (vtType === 'WEEKLY') {
+          // VT Semanal é pago separado, não muda o salário final.
+          const fridays = getFridaysInMonth(year, month);
+          fridays.forEach((fri, idx) => {
+            const vtId = `vt-${emp.id}-${mesKey}-Wk${idx}`;
+            const pData = paymentHistory[vtId];
+            list.push({
+              id: vtId, empId: emp.id, desc: `VT SEMANAL: ${emp.name}`, val: 50, venc: formatDataBR(fri),
+              status: pData ? 'PAGO' : (HOJE > fri ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: fri
+            });
+          });
+        } else if (vtType === 'MONTHLY') {
+          // VT Mensal é calculado e será somado à última parcela do mês.
+          wDays = getWorkingDaysInMonth(year, month);
+          vtValMonthly = wDays * 10;
+        }
+
+        // LÓGICA SALÁRIOS E VT MENSAL INCLUSO
+        if (emp.freq === 'QUINZENAL') {
+          const idP1 = `sal-${emp.id}-${mesKey}-P1`;
+          const idP2 = `sal-${emp.id}-${mesKey}-P2`;
+          const dateP1 = getPagamentoDate(year, month, 15);
+          const dateP2 = getPagamentoDate(year, month, 30);
+          
+          const dataP1 = paymentHistory[idP1];
+          const dataP2 = paymentHistory[idP2];
+
+          const valP1 = dataP1 ? dataP1.valorPago : empSalary / 2;
+          list.push({
+            id: idP1, empId: emp.id, desc: `SALÁRIO: ${emp.name} (PARTE 1)`, val: valP1, venc: formatDataBR(dateP1),
+            status: dataP1 ? 'PAGO' : (HOJE > dateP1 ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: dateP1
+          });
+
+          // PARTE 2: Base da P2 + O Vale Transporte do Mês (se houver)
+          const baseP2 = empSalary - valP1;
+          const finalValP2 = baseP2 + vtValMonthly;
+          const valP2 = dataP2 ? dataP2.valorPago : finalValP2;
+          const descP2 = vtValMonthly > 0 ? `SALÁRIO: ${emp.name} (P2 + VT)` : `SALÁRIO: ${emp.name} (PARTE 2)`;
+          const infoVtP2 = vtValMonthly > 0 ? `O valor inclui R$ ${vtValMonthly.toLocaleString('pt-BR', {minimumFractionDigits: 2})} de VT (${wDays} dias úteis).` : null;
+
+          list.push({
+            id: idP2, empId: emp.id, desc: descP2, val: valP2, venc: formatDataBR(dateP2),
+            status: dataP2 ? 'PAGO' : (HOJE > dateP2 ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: dateP2,
+            vtInfo: infoVtP2
+          });
+        } else {
+          const idFull = `sal-${emp.id}-${mesKey}-FULL`;
+          const dateFull = getPagamentoDate(year, month, 30);
+          const dataFull = paymentHistory[idFull];
+          
+          // MENSAL INTEGRAL: Salário Base + O Vale Transporte do Mês (se houver)
+          const finalValFull = empSalary + vtValMonthly;
+          const valFull = dataFull ? dataFull.valorPago : finalValFull;
+          const descFull = vtValMonthly > 0 ? `SALÁRIO + VT: ${emp.name}` : `SALÁRIO: ${emp.name}`;
+          const infoVtFull = vtValMonthly > 0 ? `O valor inclui R$ ${vtValMonthly.toLocaleString('pt-BR', {minimumFractionDigits: 2})} de VT (${wDays} dias úteis).` : null;
+
+          list.push({
+            id: idFull, empId: emp.id, desc: descFull, val: valFull, venc: formatDataBR(dateFull),
+            status: dataFull ? 'PAGO' : (HOJE > dateFull ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: dateFull,
+            vtInfo: infoVtFull
+          });
+        }
+      });
+
+      return list.sort((a, b) => a.rawDate - b.rawDate);
+    }
+
+    // ==========================================
+    // RENDERS E UI
+    // ==========================================
+
+    function setActiveTab(tab) {
+      activeTab = tab;
+
+      document.querySelectorAll('.tab-item').forEach(t => {
+        t.classList.remove('active');
+        t.querySelector('.tab-icon').setAttribute('color', '#CBD5E1'); 
+      });
+
+      const activeEl = document.querySelector(`.tab-item[data-tab="${tab}"]`);
+      activeEl.classList.add('active');
+      const activeIcon = activeEl.querySelector('.tab-icon');
+      
+      if(tab === 'inicio' || tab === 'extrato') activeIcon.setAttribute('color', '#14B8A6');
+      if(tab === 'equipe') activeIcon.setAttribute('color', '#A855F7');
+      
+      lucide.createIcons();
+      document.getElementById('fab-add').style.backgroundColor = tab === 'equipe' ? '#A855F7' : '#14B8A6';
+      
+      updateUI();
+    }
+
+    function changeDate(offset) {
+      if (activeTab === 'inicio') {
+        // Navega por dia
+        homeDate = new Date(homeDate.getFullYear(), homeDate.getMonth(), homeDate.getDate() + offset);
+      } else if (activeTab === 'extrato') {
+        // Navega por mês
+        extratoDate = new Date(extratoDate.getFullYear(), extratoDate.getMonth() + offset, 1);
+      }
+      updateUI();
+    }
+
+    function updateUI() {
+      const topNavRow = document.getElementById('top-nav-row');
+      const topSummary = document.getElementById('top-summary');
+      const summaryLabelPago = document.getElementById('label-pago');
+
+      // 1. Controle de Exibição do Header por Tab
+      if (activeTab === 'equipe') {
+        topNavRow.style.display = 'none';
+        topSummary.style.display = 'none';
+      } else {
+        topNavRow.style.display = 'flex';
+        topSummary.style.display = 'flex';
+
+        if (activeTab === 'inicio') {
+          // Home navega por DIA
+          document.getElementById('display-date-main').textContent = formatDataBR(homeDate);
+          document.getElementById('display-date-sub').textContent = getDiaSemana(homeDate).toUpperCase();
+          summaryLabelPago.textContent = 'PAGO NO DIA';
+        } else if (activeTab === 'extrato') {
+          // Extrato navega por MÊS
+          document.getElementById('display-date-main').textContent = getNomeMes(extratoDate.getMonth());
+          document.getElementById('display-date-sub').textContent = extratoDate.getFullYear();
+          summaryLabelPago.textContent = 'PAGO NO MÊS';
+        }
+      }
+
+      // 2. Busca e Filtragem de Dados
+      let extratoRegistros = getRegistrosFull(extratoDate.getFullYear(), extratoDate.getMonth());
+      
+      // Para a Home, primeiro pegamos tudo do mês da `homeDate`, para depois filtrar o dia exato
+      let homeMonthRegistros = getRegistrosFull(homeDate.getFullYear(), homeDate.getMonth());
+      let strHomeDate = formatDataBR(homeDate);
+      let strHoje = formatDataBR(HOJE);
+      let isHoje = strHomeDate === strHoje;
+
+      let registrosHome = homeMonthRegistros.filter(item => {
+        const isItemDate = formatDataBR(item.rawDate) === strHomeDate;
+        // Se estivermos visualizando o dia de HOJE na home, também mostramos as contas atrasadas
+        if (isHoje) {
+          return isItemDate || (item.status === 'VENCIDO' && item.status !== 'PAGO');
+        }
+        // Se estivermos navegando para dias passados ou futuros, mostramos puramente o que caiu na data
+        return isItemDate;
+      });
+
+      // 3. Atualiza Resumo (Valores)
+      let totalView = 0; let totalPagoView = 0;
+      let listToRender = [];
+      
+      if (activeTab === 'inicio') listToRender = registrosHome;
+      else if (activeTab === 'extrato') listToRender = extratoRegistros;
+
+      if (activeTab !== 'equipe') {
+        listToRender.forEach(r => {
+          totalView += (r.val || 0);
+          if (r.status === 'PAGO') totalPagoView += (r.val || 0);
+        });
+        const pendenteView = totalView - totalPagoView;
+
+        document.getElementById('val-pago').textContent = `R$ ${totalPagoView.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+        document.getElementById('val-aberto').textContent = `R$ ${pendenteView.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+      }
+
+      // 4. Renderiza as Listas na Tela
+      const container = document.getElementById('main-content');
+      let html = '';
+
+      if (activeTab === 'equipe') {
+        html += `<div class="section-title" style="margin-bottom:15px;">Gestão de Colaboradores</div>`;
+        employees.forEach(emp => {
+          const vtDesc = emp.vt_type === 'WEEKLY' ? ' | VT: Toda Sexta' : (emp.vt_type === 'MONTHLY' ? ' | VT: Dia 30' : '');
+          html += `
+            <div class="employee-card" onclick='triggerModal("RH", ${JSON.stringify(emp)})'>
+              <div style="display:flex; align-items:center;">
+                <div class="avatar">${emp.name.charAt(0)}</div>
+                <div>
+                  <div class="emp-name">${emp.name}</div>
+                  <div class="emp-sub">${emp.freq === 'MENSAL' ? 'Mensalista' : 'Quinzenal'}${vtDesc}</div>
+                </div>
+              </div>
+              <div class="emp-salary">R$ ${Number(emp.salary).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>
+            </div>
+          `;
+        });
+      } else {
+        const isHome = activeTab === 'inicio';
+        
+        let sectionTitle = 'Fluxo Mensal';
+        if (isHome) {
+           sectionTitle = isHoje ? 'Atenção Hoje' : 'Agenda do Dia';
+        }
+
+        html += `
+          <div class="section-header">
+            <div>
+              <div class="section-title">${sectionTitle}</div>
+              <div class="today-label">Hoje: ${formatDataBR(HOJE)}</div>
+              <div class="today-label" style="font-weight: 500; margin-top: 2px;">${getDiaSemana(HOJE)}</div>
+            </div>
+            ${isHome && isHoje ? `<i data-lucide="alert-circle" color="#EF4444" width="20"></i>` : ''}
+          </div>
+        `;
+
+        if (listToRender.length === 0) {
+          html += `
+            <div class="empty-state">
+              <i data-lucide="check-circle-2" color="#14B8A6" width="40" height="40"></i>
+              <div class="empty-text">Tudo limpo por aqui!</div>
+            </div>
+          `;
+        } else {
+          listToRender.forEach(item => {
+            const timeInfo = getTimeLabel(item.rawDate, item.status);
+            const pillInfo = getPillInfo(item.status);
+            const clickMode = item.tipo === 'CONTA' ? 'CONTA' : 'PAGAR_SALARIO';
+            
+            html += `
+              <div class="item-card ${item.tipo === 'SALARIO' ? 'item-salario-border' : ''}" onclick='triggerModal("${clickMode}", ${JSON.stringify(item).replace(/'/g, "&apos;")})'>
+                <div style="display:flex; align-items:center; flex:1;">
+                  <div class="item-icon ${item.tipo === 'SALARIO' ? 'icon-salario' : 'icon-conta'}">
+                    <i data-lucide="${item.tipo === 'SALARIO' ? 'users' : 'briefcase'}" width="18"></i>
+                  </div>
+                  <div style="flex:1;">
+                    <div class="item-desc">${item.desc}</div>
+                    <div class="item-time" style="color: ${timeInfo.color}">${timeInfo.txt} (${item.venc.slice(0,5)})</div>
+                  </div>
+                </div>
+                <div class="item-right">
+                  <div class="item-val">R$ ${Number(item.val || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>
+                  <div class="pill" style="background:${pillInfo.bg}; border-color:${pillInfo.txt}20;">
+                    <i data-lucide="${pillInfo.icon}" color="${pillInfo.txt}" width="10"></i>
+                    <span class="pill-txt" style="color:${pillInfo.txt}">${item.status}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        // Barra de Meta de Liquidação apenas no Extrato
+        if (!isHome) {
+          const perc = totalView > 0 ? (totalPagoView / totalView) * 100 : 0;
+          html += `
+            <div class="progress-card">
+              <div class="prog-title">Meta de Liquidação do Mês</div>
+              <div class="prog-bar-bg">
+                <div class="prog-bar-fill" style="width: ${perc}%"></div>
+              </div>
+              <div class="row-between">
+                <div class="prog-sub">${Math.round(perc)}% concluído</div>
+                <div class="prog-sub">R$ ${totalView.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      container.innerHTML = html;
+      lucide.createIcons(); 
+    }
+
+    function getTimeLabel(date, status) {
+      if (!date) return { txt: '', color: 'var(--slate)' };
+      if (status === 'PAGO') return { txt: 'Liquidado', color: 'var(--mint)' };
+      const d1 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const d2 = new Date(HOJE.getFullYear(), HOJE.getMonth(), HOJE.getDate());
+      const diff = Math.ceil((d1 - d2) / (1000 * 60 * 60 * 24));
+      if (diff === 0) return { txt: 'Vence Hoje', color: 'var(--blue)' };
+      if (diff < 0) return { txt: `${Math.abs(diff)}d atrasado`, color: 'var(--coral)' };
+      return { txt: `Faltam ${diff}d`, color: 'var(--slate)' };
+    }
+
+    function getPillInfo(status) {
+      if (status === 'PAGO') return { bg: '#ECFDF5', txt: '#047857', icon: 'check-circle-2' };
+      if (status === 'VENCIDO') return { bg: '#FFF1F2', txt: '#E11D48', icon: 'alert-circle' };
+      return { bg: '#EFF6FF', txt: '#1D4ED8', icon: 'clock' }; 
+    }
+
+    function showLoader(show) {
+      document.getElementById('pageLoader').style.display = show ? 'flex' : 'none';
+    }
+
+    async function handleLogout() {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    }
+
+    // ==========================================
+    // MODAIS E FORMULÁRIOS
+    // ==========================================
+    window.triggerModal = (mode, itemStr) => {
+      const item = typeof itemStr === 'object' ? itemStr : null;
+      handleOpenModal(mode, item);
+    };
+
+    function handleOpenModal(mode, item = null) {
+      modalMode = mode;
+      selectedItem = item;
+
+      // Reset UI
+      document.getElementById('modal-pay-salary').classList.add('hidden');
+      document.getElementById('modal-form-crud').classList.add('hidden');
+      document.getElementById('wrapper-venc').classList.add('hidden');
+      document.getElementById('wrapper-freq').classList.add('hidden');
+      document.getElementById('wrapper-vt').classList.add('hidden');
+      document.getElementById('wrapper-bill-type').classList.add('hidden');
+      document.getElementById('wrapper-status').classList.add('hidden');
+      document.getElementById('btn-delete').classList.add('hidden');
+      document.getElementById('pay-vt-info').classList.add('hidden');
+      
+      document.getElementById('btn-save').style.backgroundColor = mode === 'CONTA' ? 'var(--mint)' : 'var(--purple)';
+
+      if (item) {
+        editId = item.id;
+        document.getElementById('btn-delete').classList.remove('hidden');
+
+        if (mode === 'CONTA') {
+          document.getElementById('modal-title').textContent = 'Editar Conta';
+          document.getElementById('form-desc').value = item.desc || '';
+          document.getElementById('form-val').value = item.val || '';
+          document.getElementById('form-venc').value = item.venc || '';
+          
+          setFormStatus(item.status || 'NO PRAZO');
+          document.getElementById('modal-form-crud').classList.remove('hidden');
+          document.getElementById('wrapper-venc').classList.remove('hidden');
+          document.getElementById('wrapper-status').classList.remove('hidden');
+
+        } else if (mode === 'PAGAR_SALARIO') {
+          document.getElementById('modal-title').textContent = 'Confirmar Pagamento';
+          
+          // Tratamento para limpar visualmente o nome exibido no modal
+          let cleanName = (item.desc || '').replace('SALÁRIO: ', '')
+                                           .replace('SALÁRIO + VT: ', '')
+                                           .replace('VT SEMANAL: ', '')
+                                           .replace(' (PARTE 1)', '')
+                                           .replace(' (PARTE 2)', '')
+                                           .replace(' (P2 + VT)', '');
+          document.getElementById('pay-name').textContent = cleanName;
+          
+          document.getElementById('pay-val').value = item.val || '';
+          document.getElementById('pay-venc').textContent = (item.venc || '').slice(0,5);
+          
+          // Exibir aviso de que há VT embutido no valor final
+          if (item.vtInfo) {
+             const vtInfoEl = document.getElementById('pay-vt-info');
+             vtInfoEl.textContent = item.vtInfo;
+             vtInfoEl.classList.remove('hidden');
+          }
+
+          const isPago = paymentHistory[editId] ? true : false;
+          const btnPay = document.getElementById('btn-confirm-pay');
+          btnPay.style.backgroundColor = isPago ? 'var(--slate)' : 'var(--mint)';
+          document.getElementById('txt-confirm-pay').textContent = isPago ? 'ESTORNAR PAGAMENTO' : 'CONFIRMAR PAGAMENTO';
+          document.getElementById('modal-pay-salary').classList.remove('hidden');
+
+        } else if (mode === 'RH') {
+          document.getElementById('modal-title').textContent = 'Editar Colaborador';
+          document.getElementById('form-desc').value = item.name || '';
+          document.getElementById('form-val').value = item.salary || '';
+          
+          setFormFreq(item.freq || 'MENSAL');
+          setFormVt(item.vt_type || 'NONE');
+
+          document.getElementById('modal-form-crud').classList.remove('hidden');
+          document.getElementById('wrapper-freq').classList.remove('hidden');
+          document.getElementById('wrapper-vt').classList.remove('hidden');
+        }
+      } else {
+        editId = null;
+        document.getElementById('form-desc').value = '';
+        document.getElementById('form-val').value = '';
+        
+        let defaultDate = HOJE;
+        if (activeTab === 'inicio') defaultDate = homeDate;
+        document.getElementById('form-venc').value = formatDataBR(defaultDate);
+        
+        setFormStatus('NO PRAZO');
+        setFormFreq('MENSAL');
+        setFormVt('NONE');
+        setFormBillType('SINGLE');
+
+        document.getElementById('modal-form-crud').classList.remove('hidden');
+        
+        if (mode === 'CONTA') {
+          document.getElementById('modal-title').textContent = 'Nova Despesa';
+          document.getElementById('wrapper-venc').classList.remove('hidden');
+          document.getElementById('wrapper-status').classList.remove('hidden');
+          document.getElementById('wrapper-bill-type').classList.remove('hidden');
+        } else {
+          document.getElementById('modal-title').textContent = 'Novo Colaborador';
+          document.getElementById('wrapper-freq').classList.remove('hidden');
+          document.getElementById('wrapper-vt').classList.remove('hidden');
+        }
+      }
+
+      setModalOpen(true);
+    }
+
+    function setModalOpen(isOpen) {
+      const overlay = document.getElementById('main-modal');
+      if (isOpen) overlay.classList.add('active');
+      else overlay.classList.remove('active');
+    }
+
+    function setFormFreq(val) {
+      fFreq = val;
+      document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`.freq-btn[data-val="${val}"]`)?.classList.add('active');
+    }
+
+    function setFormVt(val) {
+      fVtType = val;
+      document.querySelectorAll('.vt-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`.vt-btn[data-val="${val}"]`)?.classList.add('active');
+    }
+
+    function setFormBillType(val) {
+      fBillType = val;
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`.type-btn[data-val="${val}"]`)?.classList.add('active');
+    }
+
+    function setFormStatus(val) {
+      fStatus = val;
+      document.querySelectorAll('#wrapper-status .status-option').forEach(b => {
+        b.classList.remove('active');
+        b.style.backgroundColor = 'transparent';
+        b.style.borderColor = '#F1F5F9';
+        b.style.color = 'var(--slate)';
+      });
+      const activeBtn = document.querySelector(`#wrapper-status .status-option[data-val="${val}"]`);
+      if(activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.color = 'white';
+        activeBtn.style.backgroundColor = val === 'PAGO' ? '#14B8A6' : (val === 'VENCIDO' ? '#EF4444' : '#0b1c30');
+        activeBtn.style.borderColor = activeBtn.style.backgroundColor;
+      }
+    }
+
+    // --- OPERAÇÕES DB ---
+    async function handleSave() {
+      const desc = document.getElementById('form-desc').value;
+      const valStr = document.getElementById('form-val').value;
+      const vencStr = document.getElementById('form-venc').value;
+
+      if (!desc || !valStr) return;
+      const numVal = parseFloat(valStr.replace(',', '.'));
+      showLoader(true);
+
+      try {
+        if (modalMode === 'CONTA') {
+          // Lógica de registro da data de pagamento para contas
+          const paidAtValue = fStatus === 'PAGO' ? new Date().toISOString() : null;
+
+          if (fBillType === 'FIXED' && !editId) {
+             const payloads = [];
+             const [d, m, y] = vencStr.split('/').map(Number);
+             for(let i=0; i<24; i++) {
+                let futureDate = new Date(y, m - 1 + i, d);
+                payloads.push({
+                   description: desc.toUpperCase(),
+                   val: numVal,
+                   venc: dateToDB(formatDataBR(futureDate)),
+                   status: fStatus,
+                   paid_at: paidAtValue,
+                   created_by: currentUser.id
+                });
+             }
+             await supabase.from('fin_bills').insert(payloads);
+          } else {
+             const payload = { 
+               description: desc.toUpperCase(), 
+               val: numVal, 
+               venc: dateToDB(vencStr), 
+               status: fStatus,
+               paid_at: paidAtValue
+             };
+             
+             if (editId) {
+               await supabase.from('fin_bills').update(payload).eq('id', editId);
+             } else {
+               payload.created_by = currentUser.id;
+               await supabase.from('fin_bills').insert([payload]);
+             }
+          }
+        } else if (modalMode === 'RH') {
+          const payload = { name: desc.toUpperCase(), salary: numVal, freq: fFreq, vt_type: fVtType };
+          let res;
+          if (editId) {
+            res = await supabase.from('fin_employees').update(payload).eq('id', editId);
+          } else {
+            payload.created_by = currentUser.id;
+            res = await supabase.from('fin_employees').insert([payload]);
+          }
+
+          if (res && res.error) {
+             if(res.error.message.includes('vt_type')) {
+                alert("Erro! Lembre-se de rodar no SQL do Supabase as atualizações do schema.");
+             }
+             throw res.error;
+          }
+        }
+        await fetchData();
+        setModalOpen(false);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    async function togglePayment() {
+      if (!editId || !selectedItem) return;
+      showLoader(true);
+      
+      try {
+        if (paymentHistory[editId]) {
+          // Estorno
+          await supabase.from('fin_salary_payments').delete().eq('instance_id', editId);
+        } else {
+          // Pagar: Envia a data exata do momento da confirmação para paid_at
+          const valStr = document.getElementById('pay-val').value || '0';
+          const numVal = parseFloat(valStr.replace(',', '.'));
+          await supabase.from('fin_salary_payments').insert([{
+            employee_id: selectedItem.empId,
+            instance_id: editId,
+            amount_paid: numVal,
+            paid_by: currentUser.id,
+            paid_at: new Date().toISOString()
+          }]);
+        }
+        await fetchData();
+        setModalOpen(false);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    async function handleDelete() {
+      if (!editId) return;
+      if (!confirm("Tem certeza que deseja excluir?")) return;
+
+      showLoader(true);
+      try {
+        if (modalMode === 'CONTA') await supabase.from('fin_bills').delete().eq('id', editId);
+        else if (modalMode === 'RH') await supabase.from('fin_employees').delete().eq('id', editId);
+        
+        await fetchData();
+        setModalOpen(false);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    // Registro do Service Worker (PWA)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker registrado com sucesso!', reg))
+          .catch(err => console.error('Falha ao registrar Service Worker', err));
+      });
+    }
+
+  </script>
+</body>
+</html>
