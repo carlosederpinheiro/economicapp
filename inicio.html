@@ -10,13 +10,16 @@
   <link rel="icon" type="image/png" sizes="512x512" href="icone512.png">
   <link rel="apple-touch-icon" href="icone192.png">
 
+  <!-- PWA Meta Tags -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#14B8A6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Exec Pro">
   
+  <!-- Ícones Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
@@ -238,6 +241,7 @@
     .status-option {
       flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #F1F5F9;
       background: transparent; cursor: pointer; font-size: 9px; font-weight: 900; color: var(--slate);
+      transition: all 0.2s ease;
     }
     .status-option.active { background: var(--primary); color: white; border-color: var(--primary); }
 
@@ -314,7 +318,7 @@
   </div>
 
   <div class="content" id="main-content">
-    </div>
+  </div>
 
   <button class="fab" id="fab-add">
     <i data-lucide="plus" stroke-width="3"></i>
@@ -365,7 +369,7 @@
         </div>
         
         <div id="pay-vt-info" class="hidden" style="color: var(--mint); text-align: center; font-size: 11px; font-weight: 800; margin-bottom: 15px;">
-          </div>
+        </div>
 
         <button class="btn-pay-huge" id="btn-confirm-pay">
           <i data-lucide="dollar-sign"></i>
@@ -596,35 +600,37 @@
         });
       });
 
-      // Formulários Toggles
-      setupToggleGroups('.freq-btn', val => fFreq = val);
-      setupToggleGroups('.vt-btn', val => fVtType = val);
-      setupToggleGroups('.type-btn', val => fBillType = val);
-      
+      // Formulários Toggles (EVENTOS EXPLICITOS CORRIGIDOS)
+      document.querySelectorAll('.freq-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          setFormFreq(btn.getAttribute('data-val'));
+        });
+      });
+
+      document.querySelectorAll('.vt-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          setFormVt(btn.getAttribute('data-val'));
+        });
+      });
+
+      document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          setFormBillType(btn.getAttribute('data-val'));
+        });
+      });
+
       document.querySelectorAll('#wrapper-status .status-option').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
-          document.querySelectorAll('#wrapper-status .status-option').forEach(b => b.classList.remove('active', 'btn-primary'));
-          btn.classList.add('active');
-          fStatus = btn.getAttribute('data-val');
-          btn.style.backgroundColor = fStatus === 'PAGO' ? '#14B8A6' : (fStatus === 'VENCIDO' ? '#EF4444' : '#0b1c30');
-          btn.style.borderColor = btn.style.backgroundColor;
+          setFormStatus(btn.getAttribute('data-val'));
         });
       });
 
       await fetchData();
     });
-
-    function setupToggleGroups(selector, callback) {
-      document.querySelectorAll(selector).forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          document.querySelectorAll(selector).forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          callback(btn.getAttribute('data-val'));
-        });
-      });
-    }
 
     // ==========================================
     // BUSCA DE DADOS
@@ -851,7 +857,6 @@
       if (activeTab === 'equipe') {
         html += `<div class="section-title" style="margin-bottom:15px;">Gestão de Colaboradores</div>`;
         employees.forEach(emp => {
-          // ATUALIZADO: Label informativa alterada visualmente para Segunda-feira
           const vtDesc = emp.vt_type === 'WEEKLY' ? ' | VT: Toda Segunda' : (emp.vt_type === 'MONTHLY' ? ' | VT: Dia 30' : '');
           html += `
             <div class="employee-card" onclick='triggerModal("RH", ${JSON.stringify(emp)})'>
@@ -958,6 +963,7 @@
       return { bg: '#EFF6FF', txt: '#1D4ED8', icon: 'clock' }; 
     }
 
+    // Loader auxiliar
     function showLoader(show) {
       document.getElementById('pageLoader').style.display = show ? 'flex' : 'none';
     }
@@ -979,7 +985,7 @@
       modalMode = mode;
       selectedItem = item;
 
-      // Reset UI
+      // Reset UI completo do modal
       document.getElementById('modal-pay-salary').classList.add('hidden');
       document.getElementById('modal-form-crud').classList.add('hidden');
       document.getElementById('wrapper-venc').classList.add('hidden');
@@ -1053,6 +1059,7 @@
         if (activeTab === 'inicio') defaultDate = homeDate;
         document.getElementById('form-venc').value = formatDataBR(defaultDate);
         
+        // Inicialização limpa e controlada
         setFormStatus('NO PRAZO');
         setFormFreq('MENSAL');
         setFormVt('NONE');
@@ -1081,35 +1088,41 @@
       else overlay.classList.remove('active');
     }
 
+    // SETTERS EXPLICITOS E SEGUROS DE ESTADO DO FORMULÁRIO (EVITAM CONFLITOS DE CSS)
     function setFormFreq(val) {
       fFreq = val;
       document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector(`.freq-btn[data-val="${val}"]`)?.classList.add('active');
+      const activeBtn = document.querySelector(`.freq-btn[data-val="${val}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
     }
 
-    // Setters visuais para toggles
     function setFormVt(val) {
       fVtType = val;
       document.querySelectorAll('.vt-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector(`.vt-btn[data-val="${val}"]`)?.classList.add('active');
+      const activeBtn = document.querySelector(`.vt-btn[data-val="${val}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
     }
 
     function setFormBillType(val) {
       fBillType = val;
       document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-      document.querySelector(`.type-btn[data-val="${val}"]`)?.classList.add('active');
+      const activeBtn = document.querySelector(`.type-btn[data-val="${val}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
     }
 
     function setFormStatus(val) {
       fStatus = val;
+      
+      // Limpa os estilos inline e classes de todos os botões antes de reatribuir
       document.querySelectorAll('#wrapper-status .status-option').forEach(b => {
         b.classList.remove('active');
         b.style.backgroundColor = 'transparent';
         b.style.borderColor = '#F1F5F9';
         b.style.color = 'var(--slate)';
       });
+
       const activeBtn = document.querySelector(`#wrapper-status .status-option[data-val="${val}"]`);
-      if(activeBtn) {
+      if (activeBtn) {
         activeBtn.classList.add('active');
         activeBtn.style.color = 'white';
         activeBtn.style.backgroundColor = val === 'PAGO' ? '#14B8A6' : (val === 'VENCIDO' ? '#EF4444' : '#0b1c30');
