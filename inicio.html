@@ -3,23 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mourão Consultoria</title>
-
+  <title>Executive Pro - Sistema</title>
+  
       <!-- Ícones do PWA e Navegador (Favicon) -->
   <link rel="icon" type="image/png" sizes="192x192" href="icone192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icone512.png">
   <link rel="apple-touch-icon" href="icone192.png">
-  
-  <!-- PWA Meta Tags -->
+
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#14B8A6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Exec Pro">
   
-  <!-- Ícones Lucide -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
@@ -137,7 +134,7 @@
       width: 40px; height: 40px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center; margin-right: 12px;
     }
-    .icon-salario { background: rgba(168, 85, 247, 0.1); color: var(--purple); }
+    .icon-salario { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
     .icon-conta { background: rgba(57, 128, 244, 0.1); color: var(--blue); }
 
     .item-desc { font-size: 11px; font-weight: 800; margin-bottom: 2px; text-transform: uppercase; }
@@ -278,13 +275,11 @@
 </head>
 <body>
 
-  <!-- SPINNER GLOBAL -->
   <div id="pageLoader">
     <div class="spinner-large"></div>
     <p>Sincronizando com a Nuvem...</p>
   </div>
 
-  <!-- HEADER -->
   <div class="header">
     <div class="row-between">
       <div class="timezone-badge">
@@ -318,17 +313,13 @@
     </div>
   </div>
 
-  <!-- MAIN CONTENT -->
   <div class="content" id="main-content">
-    <!-- Renderizado via JS -->
-  </div>
+    </div>
 
-  <!-- FAB -->
   <button class="fab" id="fab-add">
     <i data-lucide="plus" stroke-width="3"></i>
   </button>
 
-  <!-- TAB BAR -->
   <div class="tab-bar">
     <button class="tab-item active" data-tab="inicio">
       <i data-lucide="layout-dashboard" class="tab-icon" color="#14B8A6"></i>
@@ -344,7 +335,6 @@
     </button>
   </div>
 
-  <!-- MODAL GERAL -->
   <div class="modal-overlay" id="main-modal">
     <div class="modal-content">
       <div class="modal-indicator"></div>
@@ -358,7 +348,6 @@
         </button>
       </div>
 
-      <!-- CONTAINER PARA PAGAR SALARIO -->
       <div id="modal-pay-salary" class="hidden">
         <div class="salary-card">
           <span class="label">NOME DO BENEFICIÁRIO</span>
@@ -376,8 +365,7 @@
         </div>
         
         <div id="pay-vt-info" class="hidden" style="color: var(--mint); text-align: center; font-size: 11px; font-weight: 800; margin-bottom: 15px;">
-          <!-- Informação do VT aparece aqui -->
-        </div>
+          </div>
 
         <button class="btn-pay-huge" id="btn-confirm-pay">
           <i data-lucide="dollar-sign"></i>
@@ -386,7 +374,6 @@
         <div class="hint" id="pay-hint">* A data do pagamento será registrada no momento do clique.</div>
       </div>
 
-      <!-- CONTAINER PARA FORMULÁRIOS (CONTA / RH) -->
       <div id="modal-form-crud" class="hidden">
         <div class="form-container">
           <span class="label">DESCRIÇÃO / NOME</span>
@@ -412,7 +399,6 @@
             </div>
           </div>
           
-          <!-- NOVO: VALE TRANSPORTE (SÓ NO RH) -->
           <div id="wrapper-vt" class="hidden" style="margin-top: 5px;">
             <span class="label">VALE TRANSPORTE</span>
             <div class="toggle-row">
@@ -422,7 +408,6 @@
             </div>
           </div>
 
-          <!-- NOVO: TIPO DE CONTA (SÓ NA CONTA) -->
           <div id="wrapper-bill-type" class="hidden" style="margin-top: 5px;">
             <span class="label">TIPO DE DESPESA</span>
             <div class="toggle-row">
@@ -447,7 +432,6 @@
     </div>
   </div>
 
-  <!-- Importa o Supabase configurado -->
   <script src="supabase.js"></script>
 
   <script>
@@ -531,18 +515,20 @@
       return count;
     };
 
-    const getFridaysInMonth = (year, month) => {
-      let fridays = [];
+    // ATUALIZADO: Busca todas as SEGUNDAS-FEIRAS do mês
+    const getMondaysInMonth = (year, month) => {
+      let mondays = [];
       let d = new Date(year, month, 1);
       while (d.getMonth() === month) {
-        if (d.getDay() === 5) {
+        if (d.getDay() === 1) { // 1 representa Segunda-feira
            let payDate = new Date(d);
-           while(!isDiaUtil(payDate)) { payDate.setDate(payDate.getDate() - 1); }
-           fridays.push(new Date(payDate));
+           // Se segunda for feriado, avança para o próximo dia útil (terça-feira)
+           while(!isDiaUtil(payDate)) { payDate.setDate(payDate.getDate() + 1); }
+           mondays.push(new Date(payDate));
         }
         d.setDate(d.getDate() + 1);
       }
-      return fridays;
+      return mondays;
     };
 
     const formatDataBR = (date) => {
@@ -700,14 +686,14 @@
 
         // LÓGICA VALE TRANSPORTE
         if (vtType === 'WEEKLY') {
-          // VT Semanal é pago separado, não muda o salário final.
-          const fridays = getFridaysInMonth(year, month);
-          fridays.forEach((fri, idx) => {
+          // ATUALIZADO: Mapeia para carregar os pagamentos de VT nas SEGUNDAS-FEIRAS
+          const mondays = getMondaysInMonth(year, month);
+          mondays.forEach((mon, idx) => {
             const vtId = `vt-${emp.id}-${mesKey}-Wk${idx}`;
             const pData = paymentHistory[vtId];
             list.push({
-              id: vtId, empId: emp.id, desc: `VT SEMANAL: ${emp.name}`, val: 50, venc: formatDataBR(fri),
-              status: pData ? 'PAGO' : (HOJE > fri ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: fri
+              id: vtId, empId: emp.id, desc: `VT SEMANAL: ${emp.name}`, val: 50, venc: formatDataBR(mon),
+              status: pData ? 'PAGO' : (HOJE > mon ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: mon
             });
           });
         } else if (vtType === 'MONTHLY') {
@@ -791,12 +777,11 @@
       updateUI();
     }
 
+    // Navegação temporal inteligente por aba
     function changeDate(offset) {
       if (activeTab === 'inicio') {
-        // Navega por dia
         homeDate = new Date(homeDate.getFullYear(), homeDate.getMonth(), homeDate.getDate() + offset);
       } else if (activeTab === 'extrato') {
-        // Navega por mês
         extratoDate = new Date(extratoDate.getFullYear(), extratoDate.getMonth() + offset, 1);
       }
       updateUI();
@@ -816,12 +801,10 @@
         topSummary.style.display = 'flex';
 
         if (activeTab === 'inicio') {
-          // Home navega por DIA
           document.getElementById('display-date-main').textContent = formatDataBR(homeDate);
           document.getElementById('display-date-sub').textContent = getDiaSemana(homeDate).toUpperCase();
           summaryLabelPago.textContent = 'PAGO NO DIA';
         } else if (activeTab === 'extrato') {
-          // Extrato navega por MÊS
           document.getElementById('display-date-main').textContent = getNomeMes(extratoDate.getMonth());
           document.getElementById('display-date-sub').textContent = extratoDate.getFullYear();
           summaryLabelPago.textContent = 'PAGO NO MÊS';
@@ -830,8 +813,6 @@
 
       // 2. Busca e Filtragem de Dados
       let extratoRegistros = getRegistrosFull(extratoDate.getFullYear(), extratoDate.getMonth());
-      
-      // Para a Home, primeiro pegamos tudo do mês da `homeDate`, para depois filtrar o dia exato
       let homeMonthRegistros = getRegistrosFull(homeDate.getFullYear(), homeDate.getMonth());
       let strHomeDate = formatDataBR(homeDate);
       let strHoje = formatDataBR(HOJE);
@@ -839,15 +820,13 @@
 
       let registrosHome = homeMonthRegistros.filter(item => {
         const isItemDate = formatDataBR(item.rawDate) === strHomeDate;
-        // Se estivermos visualizando o dia de HOJE na home, também mostramos as contas atrasadas
         if (isHoje) {
           return isItemDate || (item.status === 'VENCIDO' && item.status !== 'PAGO');
         }
-        // Se estivermos navegando para dias passados ou futuros, mostramos puramente o que caiu na data
         return isItemDate;
       });
 
-      // 3. Atualiza Resumo (Valores)
+      // 3. Atualiza Resumo Financeiro
       let totalView = 0; let totalPagoView = 0;
       let listToRender = [];
       
@@ -865,14 +844,15 @@
         document.getElementById('val-aberto').textContent = `R$ ${pendenteView.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
       }
 
-      // 4. Renderiza as Listas na Tela
+      // 4. Renderiza a Tela Principal
       const container = document.getElementById('main-content');
       let html = '';
 
       if (activeTab === 'equipe') {
         html += `<div class="section-title" style="margin-bottom:15px;">Gestão de Colaboradores</div>`;
         employees.forEach(emp => {
-          const vtDesc = emp.vt_type === 'WEEKLY' ? ' | VT: Toda Sexta' : (emp.vt_type === 'MONTHLY' ? ' | VT: Dia 30' : '');
+          // ATUALIZADO: Label informativa alterada visualmente para Segunda-feira
+          const vtDesc = emp.vt_type === 'WEEKLY' ? ' | VT: Toda Segunda' : (emp.vt_type === 'MONTHLY' ? ' | VT: Dia 30' : '');
           html += `
             <div class="employee-card" onclick='triggerModal("RH", ${JSON.stringify(emp)})'>
               <div style="display:flex; align-items:center;">
@@ -888,7 +868,6 @@
         });
       } else {
         const isHome = activeTab === 'inicio';
-        
         let sectionTitle = 'Fluxo Mensal';
         if (isHome) {
            sectionTitle = isHoje ? 'Atenção Hoje' : 'Agenda do Dia';
@@ -941,7 +920,6 @@
           });
         }
 
-        // Barra de Meta de Liquidação apenas no Extrato
         if (!isHome) {
           const perc = totalView > 0 ? (totalPagoView / totalView) * 100 : 0;
           html += `
@@ -1032,7 +1010,6 @@
         } else if (mode === 'PAGAR_SALARIO') {
           document.getElementById('modal-title').textContent = 'Confirmar Pagamento';
           
-          // Tratamento para limpar visualmente o nome exibido no modal
           let cleanName = (item.desc || '').replace('SALÁRIO: ', '')
                                            .replace('SALÁRIO + VT: ', '')
                                            .replace('VT SEMANAL: ', '')
@@ -1040,11 +1017,9 @@
                                            .replace(' (PARTE 2)', '')
                                            .replace(' (P2 + VT)', '');
           document.getElementById('pay-name').textContent = cleanName;
-          
           document.getElementById('pay-val').value = item.val || '';
           document.getElementById('pay-venc').textContent = (item.venc || '').slice(0,5);
           
-          // Exibir aviso de que há VT embutido no valor final
           if (item.vtInfo) {
              const vtInfoEl = document.getElementById('pay-vt-info');
              vtInfoEl.textContent = item.vtInfo;
@@ -1112,6 +1087,7 @@
       document.querySelector(`.freq-btn[data-val="${val}"]`)?.classList.add('active');
     }
 
+    // Setters visuais para toggles
     function setFormVt(val) {
       fVtType = val;
       document.querySelectorAll('.vt-btn').forEach(b => b.classList.remove('active'));
@@ -1141,7 +1117,7 @@
       }
     }
 
-    // --- OPERAÇÕES DB ---
+    // --- OPERAÇÕES DO BANCO DE DADOS ---
     async function handleSave() {
       const desc = document.getElementById('form-desc').value;
       const valStr = document.getElementById('form-val').value;
@@ -1153,7 +1129,6 @@
 
       try {
         if (modalMode === 'CONTA') {
-          // Lógica de registro da data de pagamento para contas
           const paidAtValue = fStatus === 'PAGO' ? new Date().toISOString() : null;
 
           if (fBillType === 'FIXED' && !editId) {
@@ -1198,9 +1173,7 @@
           }
 
           if (res && res.error) {
-             if(res.error.message.includes('vt_type')) {
-                alert("Erro! Lembre-se de rodar no SQL do Supabase as atualizações do schema.");
-             }
+             alert("Erro na operação de RH. Verifique se o schema no Supabase está atualizado.");
              throw res.error;
           }
         }
@@ -1219,10 +1192,8 @@
       
       try {
         if (paymentHistory[editId]) {
-          // Estorno
           await supabase.from('fin_salary_payments').delete().eq('instance_id', editId);
         } else {
-          // Pagar: Envia a data exata do momento da confirmação para paid_at
           const valStr = document.getElementById('pay-val').value || '0';
           const numVal = parseFloat(valStr.replace(',', '.'));
           await supabase.from('fin_salary_payments').insert([{
