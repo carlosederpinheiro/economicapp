@@ -412,12 +412,16 @@
             </div>
           </div>
 
+          <!-- ATUALIZADO: Adicionada a opção "Fixa Variável" no tipo de despesa -->
           <div id="wrapper-bill-type" class="hidden" style="margin-top: 5px;">
             <span class="label">TIPO DE DESPESA</span>
             <div class="toggle-row">
               <button class="toggle-btn mint-active type-btn active" data-val="SINGLE">Única</button>
               <button class="toggle-btn mint-active type-btn" data-val="FIXED">Fixa Mensal</button>
+              <button class="toggle-btn mint-active type-btn" data-val="FIXED_VAR">Fixa Variável</button>
             </div>
+            <!-- Exibe dicas didáticas na tela dependendo do tipo de despesa escolhido -->
+            <div id="bill-type-helper" class="hidden" style="color: var(--blue); font-size: 9px; font-weight: bold; margin-top: 8px; line-height: 1.3;"></div>
           </div>
 
           <div class="status-row" id="wrapper-status">
@@ -902,18 +906,25 @@
             const pillInfo = getPillInfo(item.status);
             const clickMode = item.tipo === 'CONTA' ? 'CONTA' : 'PAGAR_SALARIO';
             
+            // ATUALIZADO: Tratamento e remoção visual da tag (VAR) na listagem, injetando uma badge estilosa no lugar
+            let isVariable = item.tipo === 'CONTA' && item.desc.includes(' (VAR)');
+            let cleanDesc = isVariable ? item.desc.replace(' (VAR)', '') : item.desc;
+            
             html += `
               <div class="item-card ${item.tipo === 'SALARIO' ? 'item-salario-border' : ''}" onclick='triggerModal("${clickMode}", ${JSON.stringify(item).replace(/'/g, "&apos;")})'>
-                <div style="display:flex; align-items:center; flex:1;">
+                <div style="display:flex; align-items:center; flex:1; min-width: 0;">
                   <div class="item-icon ${item.tipo === 'SALARIO' ? 'icon-salario' : 'icon-conta'}">
                     <i data-lucide="${item.tipo === 'SALARIO' ? 'users' : 'briefcase'}" width="18"></i>
                   </div>
-                  <div style="flex:1;">
-                    <div class="item-desc">${item.desc}</div>
+                  <div style="flex:1; min-width: 0; padding-right: 8px;">
+                    <div class="item-desc" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px;">${cleanDesc}</span>
+                      ${isVariable ? `<span style="background: #EFF6FF; color: #1D4ED8; font-size: 7.5px; font-weight: 900; padding: 1px 6px; border-radius: 6px; border: 1px solid #DBEAFE; text-transform: uppercase;">Variável</span>` : ''}
+                    </div>
                     <div class="item-time" style="color: ${timeInfo.color}">${timeInfo.txt} (${item.venc.slice(0,5)})</div>
                   </div>
                 </div>
-                <div class="item-right">
+                <div class="item-right" style="flex-shrink: 0;">
                   <div class="item-val">R$ ${Number(item.val || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>
                   <div class="pill" style="background:${pillInfo.bg}; border-color:${pillInfo.txt}20;">
                     <i data-lucide="${pillInfo.icon}" color="${pillInfo.txt}" width="10"></i>
@@ -1004,14 +1015,23 @@
 
         if (mode === 'CONTA') {
           document.getElementById('modal-title').textContent = 'Editar Conta';
-          document.getElementById('form-desc').value = item.desc || '';
+          
+          // ATUALIZADO: Remove visualmente a tag de variável no formulário para não poluir
+          let rawDesc = item.desc || '';
+          let isVar = rawDesc.includes(' (VAR)');
+          let cleanDesc = isVar ? rawDesc.replace(' (VAR)', '') : rawDesc;
+          
+          document.getElementById('form-desc').value = cleanDesc;
           document.getElementById('form-val').value = item.val || '';
           document.getElementById('form-venc').value = item.venc || '';
           
           setFormStatus(item.status || 'NO PRAZO');
+          setFormBillType(isVar ? 'FIXED_VAR' : 'SINGLE');
+          
           document.getElementById('modal-form-crud').classList.remove('hidden');
           document.getElementById('wrapper-venc').classList.remove('hidden');
           document.getElementById('wrapper-status').classList.remove('hidden');
+          document.getElementById('wrapper-bill-type').classList.remove('hidden');
 
         } else if (mode === 'PAGAR_SALARIO') {
           document.getElementById('modal-title').textContent = 'Confirmar Pagamento';
@@ -1103,11 +1123,25 @@
       if (activeBtn) activeBtn.classList.add('active');
     }
 
+    // ATUALIZADO: Inclui ajuda de contexto em tempo real de acordo com o tipo selecionado
     function setFormBillType(val) {
       fBillType = val;
       document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
       const activeBtn = document.querySelector(`.type-btn[data-val="${val}"]`);
       if (activeBtn) activeBtn.classList.add('active');
+      
+      const helperEl = document.getElementById('bill-type-helper');
+      if (helperEl) {
+        if (val === 'FIXED_VAR') {
+          helperEl.textContent = '* Criará 24 parcelas mensais futuras para essa data. Você poderá preencher o valor exato individual de cada mês quando a conta chegar.';
+          helperEl.classList.remove('hidden');
+        } else if (val === 'FIXED') {
+          helperEl.textContent = '* Criará 24 parcelas mensais com exatamente o mesmo valor fixo em todas.';
+          helperEl.classList.remove('hidden');
+        } else {
+          helperEl.classList.add('hidden');
+        }
+      }
     }
 
     function setFormStatus(val) {
@@ -1142,15 +1176,26 @@
 
       try {
         if (modalMode === 'CONTA') {
+          // Lógica de registro da data de pagamento para contas
           const paidAtValue = fStatus === 'PAGO' ? new Date().toISOString() : null;
 
-          if (fBillType === 'FIXED' && !editId) {
+          // ATUALIZADO: Adiciona tag invisível (VAR) no nome para distinguir despesas de valor variável sem quebrar o banco
+          let finalDesc = desc.toUpperCase();
+          if (fBillType === 'FIXED_VAR') {
+             if (!finalDesc.includes(' (VAR)')) {
+                finalDesc += ' (VAR)';
+             }
+          } else {
+             finalDesc = finalDesc.replace(' (VAR)', '');
+          }
+
+          if ((fBillType === 'FIXED' || fBillType === 'FIXED_VAR') && !editId) {
              const payloads = [];
              const [d, m, y] = vencStr.split('/').map(Number);
              for(let i=0; i<24; i++) {
                 let futureDate = new Date(y, m - 1 + i, d);
                 payloads.push({
-                   description: desc.toUpperCase(),
+                   description: finalDesc,
                    val: numVal,
                    venc: dateToDB(formatDataBR(futureDate)),
                    status: fStatus,
@@ -1161,7 +1206,7 @@
              await supabase.from('fin_bills').insert(payloads);
           } else {
              const payload = { 
-               description: desc.toUpperCase(), 
+               description: finalDesc, 
                val: numVal, 
                venc: dateToDB(vencStr), 
                status: fStatus,
