@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Executive Pro - Sistema</title>
+  <title>Mourão Consultoria</title>
   
       <!-- Ícones do PWA e Navegador (Favicon) -->
   <link rel="icon" type="image/png" sizes="192x192" href="icone192.png">
@@ -339,6 +339,7 @@
     </button>
   </div>
 
+  <!-- MODAL GERAL (PAGAMENTO OU CADASTRO/EDIÇÃO) -->
   <div class="modal-overlay" id="main-modal">
     <div class="modal-content">
       <div class="modal-indicator"></div>
@@ -352,9 +353,10 @@
         </button>
       </div>
 
+      <!-- PAINEL DE PAGAMENTO (HOME / ADIANTAMENTO) -->
       <div id="modal-pay-salary" class="hidden">
         <div class="salary-card">
-          <span class="label">NOME DO BENEFICIÁRIO</span>
+          <span class="label" id="pay-entity-type-label">NOME DO BENEFICIÁRIO</span>
           <div class="salary-name-text" id="pay-name">NOME</div>
           <div class="row-between">
             <div style="flex:1;">
@@ -371,6 +373,12 @@
         <div id="pay-vt-info" class="hidden" style="color: var(--mint); text-align: center; font-size: 11px; font-weight: 800; margin-bottom: 15px;">
         </div>
 
+        <!-- Alerta e Histórico Read-Only para Lançamentos quando abertos no Extrato -->
+        <div id="details-read-only" class="hidden" style="background: #F1F5F9; padding: 15px; border-radius: 16px; margin-bottom: 15px; text-align: center; border: 1px dashed var(--slate);">
+          <div style="font-size: 11px; font-weight: 800; color: var(--primary);" id="details-status-text">Status: Pendente</div>
+          <div style="font-size: 9px; font-weight: 600; color: var(--slate); margin-top: 5px;" id="details-sub-text">Para realizar pagamentos, utilize a tela Início.</div>
+        </div>
+
         <button class="btn-pay-huge" id="btn-confirm-pay">
           <i data-lucide="dollar-sign"></i>
           <span id="txt-confirm-pay">CONFIRMAR PAGAMENTO</span>
@@ -378,6 +386,7 @@
         <div class="hint" id="pay-hint">* A data do pagamento será registrada no momento do clique.</div>
       </div>
 
+      <!-- PAINEL DE CADASTRO/EDIÇÃO (EXTRATO / EQUIPE) -->
       <div id="modal-form-crud" class="hidden">
         <div class="form-container">
           <span class="label">DESCRIÇÃO / NOME</span>
@@ -412,7 +421,6 @@
             </div>
           </div>
 
-          <!-- ATUALIZADO: Adicionada a opção "Fixa Variável" no tipo de despesa -->
           <div id="wrapper-bill-type" class="hidden" style="margin-top: 5px;">
             <span class="label">TIPO DE DESPESA</span>
             <div class="toggle-row">
@@ -420,7 +428,6 @@
               <button class="toggle-btn mint-active type-btn" data-val="FIXED">Fixa Mensal</button>
               <button class="toggle-btn mint-active type-btn" data-val="FIXED_VAR">Fixa Variável</button>
             </div>
-            <!-- Exibe dicas didáticas na tela dependendo do tipo de despesa escolhido -->
             <div id="bill-type-helper" class="hidden" style="color: var(--blue); font-size: 9px; font-weight: bold; margin-top: 8px; line-height: 1.3;"></div>
           </div>
 
@@ -440,20 +447,38 @@
     </div>
   </div>
 
+  <!-- MODAL DE ADIANTAMENTO DE PAGAMENTOS -->
+  <div class="modal-overlay" id="adiantar-modal">
+    <div class="modal-content" style="max-height: 85vh;">
+      <div class="modal-indicator"></div>
+      <div class="section-header" style="margin-top: 0">
+        <div>
+          <div class="modal-title">Adiantar Pagamento</div>
+          <div class="modal-sub">Selecione uma despesa futura para quitar hoje</div>
+        </div>
+        <button onclick="setAdiantarModalOpen(false)" style="background:none;border:none;cursor:pointer;">
+          <i data-lucide="x" color="#64748B"></i>
+        </button>
+      </div>
+      <div style="overflow-y: auto; max-height: 60vh; padding-bottom: 20px;" id="adiantar-list-content">
+        <!-- JS renderiza lista de lançamentos pendentes futuros do mês corrente -->
+      </div>
+    </div>
+  </div>
+
   <script src="supabase.js"></script>
 
   <script>
     // ==========================================
     // VARIÁVEIS DE ESTADO
     // ==========================================
-    // Captura a data real atual, forçando o fuso horário de Manaus (AMT)
     const getManausToday = () => {
       const now = new Date();
       const options = { timeZone: 'America/Manaus', year: 'numeric', month: 'numeric', day: 'numeric' };
       const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(now);
       
       const year = parseInt(parts.find(p => p.type === 'year').value);
-      const month = parseInt(parts.find(p => p.type === 'month').value) - 1; // O JS conta meses de 0 a 11
+      const month = parseInt(parts.find(p => p.type === 'month').value) - 1; 
       const day = parseInt(parts.find(p => p.type === 'day').value);
       
       return new Date(year, month, day);
@@ -464,9 +489,8 @@
     
     let activeTab = 'inicio';
     
-    // Controles de Data Independentes por Tab
-    let homeDate = new Date(HOJE);       // Para a tab 'inicio' (Navega por dia)
-    let extratoDate = new Date(HOJE);    // Para a tab 'extrato' (Navega por mês)
+    let homeDate = new Date(HOJE);       
+    let extratoDate = new Date(HOJE);    
     
     let employees = [];
     let contas = [];
@@ -523,14 +547,12 @@
       return count;
     };
 
-    // ATUALIZADO: Busca todas as SEGUNDAS-FEIRAS do mês
     const getMondaysInMonth = (year, month) => {
       let mondays = [];
       let d = new Date(year, month, 1);
       while (d.getMonth() === month) {
-        if (d.getDay() === 1) { // 1 representa Segunda-feira
+        if (d.getDay() === 1) { 
            let payDate = new Date(d);
-           // Se segunda for feriado, avança para o próximo dia útil (terça-feira)
            while(!isDiaUtil(payDate)) { payDate.setDate(payDate.getDate() + 1); }
            mondays.push(new Date(payDate));
         }
@@ -567,7 +589,7 @@
     };
 
     // ==========================================
-    // INICIALIZAÇÃO E SUPABASE
+    // INICIALIZAÇÃO E EVENTOS
     // ==========================================
     document.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
@@ -577,7 +599,6 @@
         return;
       }
 
-      // Verifica Autenticação
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         window.location.href = 'index.html';
@@ -585,18 +606,20 @@
       }
       currentUser = session.user;
 
-      // Eventos Estáticos da UI
       document.getElementById('btn-logout').addEventListener('click', handleLogout);
       document.getElementById('btn-prev-date').addEventListener('click', () => changeDate(-1));
       document.getElementById('btn-next-date').addEventListener('click', () => changeDate(1));
-      document.getElementById('fab-add').addEventListener('click', () => handleOpenModal(activeTab === 'equipe' ? 'RH' : 'CONTA'));
+      document.getElementById('fab-add').addEventListener('click', () => {
+        // Fab adiciona novo colaborador no RH ou nova conta no Extrato
+        handleOpenModal(activeTab === 'equipe' ? 'RH' : 'CONTA');
+      });
       document.getElementById('btn-close-modal').addEventListener('click', () => setModalOpen(false));
       
       document.getElementById('btn-save').addEventListener('click', handleSave);
       document.getElementById('btn-delete').addEventListener('click', handleDelete);
-      document.getElementById('btn-confirm-pay').addEventListener('click', togglePayment);
+      document.getElementById('btn-confirm-pay').addEventListener('click', handleConfirmPayBtnClick);
 
-      // Tabs Logic
+      // Tabs
       document.querySelectorAll('.tab-item').forEach(tab => {
         tab.addEventListener('click', (e) => {
           const tabName = e.currentTarget.getAttribute('data-tab');
@@ -604,7 +627,7 @@
         });
       });
 
-      // Formulários Toggles (EVENTOS EXPLICITOS CORRIGIDOS)
+      // Toggles de Form
       document.querySelectorAll('.freq-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -676,7 +699,6 @@
     function getRegistrosFull(year, month) {
       let list = [];
 
-      // Filtrar Contas que pertencem a esse mês
       contas.forEach(c => {
         if(!c.venc) return;
         const [d, m, y] = c.venc.split('/').map(Number);
@@ -685,7 +707,6 @@
         }
       });
 
-      // Gerar Folha e VTs
       employees.forEach(emp => {
         const mesKey = `${year}-${month}`;
         const empSalary = Number(emp.salary);
@@ -694,9 +715,7 @@
         let vtValMonthly = 0;
         let wDays = 0;
 
-        // LÓGICA VALE TRANSPORTE
         if (vtType === 'WEEKLY') {
-          // ATUALIZADO: Mapeia para carregar os pagamentos de VT nas SEGUNDAS-FEIRAS
           const mondays = getMondaysInMonth(year, month);
           mondays.forEach((mon, idx) => {
             const vtId = `vt-${emp.id}-${mesKey}-Wk${idx}`;
@@ -707,12 +726,10 @@
             });
           });
         } else if (vtType === 'MONTHLY') {
-          // VT Mensal é calculado e será somado à última parcela do mês.
           wDays = getWorkingDaysInMonth(year, month);
           vtValMonthly = wDays * 10;
         }
 
-        // LÓGICA SALÁRIOS E VT MENSAL INCLUSO
         if (emp.freq === 'QUINZENAL') {
           const idP1 = `sal-${emp.id}-${mesKey}-P1`;
           const idP2 = `sal-${emp.id}-${mesKey}-P2`;
@@ -728,7 +745,6 @@
             status: dataP1 ? 'PAGO' : (HOJE > dateP1 ? 'VENCIDO' : 'NO PRAZO'), tipo: 'SALARIO', rawDate: dateP1
           });
 
-          // PARTE 2: Base da P2 + O Vale Transporte do Mês (se houver)
           const baseP2 = empSalary - valP1;
           const finalValP2 = baseP2 + vtValMonthly;
           const valP2 = dataP2 ? dataP2.valorPago : finalValP2;
@@ -745,7 +761,6 @@
           const dateFull = getPagamentoDate(year, month, 30);
           const dataFull = paymentHistory[idFull];
           
-          // MENSAL INTEGRAL: Salário Base + O Vale Transporte do Mês (se houver)
           const finalValFull = empSalary + vtValMonthly;
           const valFull = dataFull ? dataFull.valorPago : finalValFull;
           const descFull = vtValMonthly > 0 ? `SALÁRIO + VT: ${emp.name}` : `SALÁRIO: ${emp.name}`;
@@ -763,9 +778,8 @@
     }
 
     // ==========================================
-    // RENDERS E UI
+    // CONTROLES DE INTERFACE
     // ==========================================
-
     function setActiveTab(tab) {
       activeTab = tab;
 
@@ -782,12 +796,19 @@
       if(tab === 'equipe') activeIcon.setAttribute('color', '#A855F7');
       
       lucide.createIcons();
-      document.getElementById('fab-add').style.backgroundColor = tab === 'equipe' ? '#A855F7' : '#14B8A6';
+
+      // Ajusta comportamento do FAB
+      const fab = document.getElementById('fab-add');
+      if (tab === 'inicio') {
+        fab.classList.add('hidden'); // Home não precisa de FAB pois o fluxo de criar despesas fica no Extrato
+      } else {
+        fab.classList.remove('hidden');
+        fab.style.backgroundColor = tab === 'equipe' ? '#A855F7' : '#14B8A6';
+      }
       
       updateUI();
     }
 
-    // Navegação temporal inteligente por aba
     function changeDate(offset) {
       if (activeTab === 'inicio') {
         homeDate = new Date(homeDate.getFullYear(), homeDate.getMonth(), homeDate.getDate() + offset);
@@ -802,7 +823,6 @@
       const topSummary = document.getElementById('top-summary');
       const summaryLabelPago = document.getElementById('label-pago');
 
-      // 1. Controle de Exibição do Header por Tab
       if (activeTab === 'equipe') {
         topNavRow.style.display = 'none';
         topSummary.style.display = 'none';
@@ -821,7 +841,6 @@
         }
       }
 
-      // 2. Busca e Filtragem de Dados
       let extratoRegistros = getRegistrosFull(extratoDate.getFullYear(), extratoDate.getMonth());
       let homeMonthRegistros = getRegistrosFull(homeDate.getFullYear(), homeDate.getMonth());
       let strHomeDate = formatDataBR(homeDate);
@@ -836,7 +855,6 @@
         return isItemDate;
       });
 
-      // 3. Atualiza Resumo Financeiro
       let totalView = 0; let totalPagoView = 0;
       let listToRender = [];
       
@@ -854,7 +872,6 @@
         document.getElementById('val-aberto').textContent = `R$ ${pendenteView.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
       }
 
-      // 4. Renderiza a Tela Principal
       const container = document.getElementById('main-content');
       let html = '';
 
@@ -893,6 +910,24 @@
           </div>
         `;
 
+        // SE TELA FOR A HOME: Renderizar Botão Bonito de Adiantar Pagamentos
+        if (isHome) {
+          html += `
+            <div style="background: rgba(20, 184, 166, 0.08); border: 1px dashed var(--mint); padding: 15px; border-radius: 18px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="openAdiantarModal()">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(20, 184, 166, 0.15); display: flex; align-items: center; justify-content: center; color: var(--mint);">
+                  <i data-lucide="calendar-days" width="20"></i>
+                </div>
+                <div>
+                  <div style="font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--mint);">Adiantar Pagamentos</div>
+                  <div style="font-size: 9px; font-weight: 700; color: var(--slate);">Pagar contas ou salários futuros hoje</div>
+                </div>
+              </div>
+              <i data-lucide="chevron-right" color="var(--mint)" width="18"></i>
+            </div>
+          `;
+        }
+
         if (listToRender.length === 0) {
           html += `
             <div class="empty-state">
@@ -904,9 +939,17 @@
           listToRender.forEach(item => {
             const timeInfo = getTimeLabel(item.rawDate, item.status);
             const pillInfo = getPillInfo(item.status);
-            const clickMode = item.tipo === 'CONTA' ? 'CONTA' : 'PAGAR_SALARIO';
             
-            // ATUALIZADO: Tratamento e remoção visual da tag (VAR) na listagem, injetando uma badge estilosa no lugar
+            // FILOSOFIA DE TRABALHO DE TELAS:
+            // Home: Clicar sempre abre fluxo direto de PAGAR (PAGAR_SALARIO ou PAGAR_CONTA)
+            // Extrato: Clicar abre fluxo de ADMIN/EDIT (CONTA = Edit completo, SALARIO = Detalhes Read Only)
+            let clickMode = '';
+            if (isHome) {
+               clickMode = item.tipo === 'CONTA' ? 'PAGAR_CONTA' : 'PAGAR_SALARIO';
+            } else {
+               clickMode = item.tipo === 'CONTA' ? 'CONTA' : 'VER_DETALHES_SALARIO';
+            }
+            
             let isVariable = item.tipo === 'CONTA' && item.desc.includes(' (VAR)');
             let cleanDesc = isVariable ? item.desc.replace(' (VAR)', '') : item.desc;
             
@@ -974,7 +1017,6 @@
       return { bg: '#EFF6FF', txt: '#1D4ED8', icon: 'clock' }; 
     }
 
-    // Loader auxiliar
     function showLoader(show) {
       document.getElementById('pageLoader').style.display = show ? 'flex' : 'none';
     }
@@ -992,11 +1034,84 @@
       handleOpenModal(mode, item);
     };
 
+    // Abre e fecha o painel de adiantamento
+    window.openAdiantarModal = () => {
+       renderAdiantarList();
+       setAdiantarModalOpen(true);
+    };
+
+    function setAdiantarModalOpen(isOpen) {
+      const overlay = document.getElementById('adiantar-modal');
+      if (isOpen) overlay.classList.add('active');
+      else overlay.classList.remove('active');
+    }
+
+    window.handleAdiantarClick = (mode, item) => {
+      setAdiantarModalOpen(false);
+      setTimeout(() => {
+        triggerModal(mode, item);
+      }, 300);
+    };
+
+    // Renderiza os pendentes futuros do mês atual para adiantamento
+    function renderAdiantarList() {
+      const container = document.getElementById('adiantar-list-content');
+      const year = homeDate.getFullYear();
+      const month = homeDate.getMonth();
+      const todosRegistros = getRegistrosFull(year, month);
+      
+      // Filtra apenas despesas ou salários FUTUROS (maiores que HOJE) que não estão pagos
+      const pendentesFuturos = todosRegistros.filter(item => {
+         return item.rawDate > HOJE && item.status !== 'PAGO';
+      });
+
+      if (pendentesFuturos.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding: 40px 10px;">
+            <i data-lucide="check-square" color="var(--mint)" width="32"></i>
+            <div class="empty-text" style="font-size: 11px; margin-top:8px;">Nenhum lançamento futuro pendente este mês.</div>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      let html = '';
+      pendentesFuturos.forEach(item => {
+        const timeInfo = getTimeLabel(item.rawDate, item.status);
+        const clickMode = item.tipo === 'CONTA' ? 'PAGAR_CONTA' : 'PAGAR_SALARIO';
+        let isVariable = item.tipo === 'CONTA' && item.desc.includes(' (VAR)');
+        let cleanDesc = isVariable ? item.desc.replace(' (VAR)', '') : item.desc;
+
+        html += `
+          <div class="item-card ${item.tipo === 'SALARIO' ? 'item-salario-border' : ''}" style="margin-bottom: 10px;" onclick='handleAdiantarClick("${clickMode}", ${JSON.stringify(item).replace(/'/g, "&apos;")})'>
+            <div style="display:flex; align-items:center; flex:1; min-width: 0;">
+              <div class="item-icon ${item.tipo === 'SALARIO' ? 'icon-salario' : 'icon-conta'}">
+                <i data-lucide="${item.tipo === 'SALARIO' ? 'users' : 'briefcase'}" width="16"></i>
+              </div>
+              <div style="flex:1; min-width: 0; padding-right: 8px;">
+                <div class="item-desc" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">${cleanDesc}</span>
+                  ${isVariable ? `<span style="background: #EFF6FF; color: #1D4ED8; font-size: 7.5px; font-weight: 900; padding: 1px 6px; border-radius: 6px; border: 1px solid #DBEAFE; text-transform: uppercase;">Variável</span>` : ''}
+                </div>
+                <div class="item-time" style="color: ${timeInfo.color}">${timeInfo.txt} (${item.venc.slice(0,5)})</div>
+              </div>
+            </div>
+            <div class="item-right" style="flex-shrink: 0;">
+              <div class="item-val">R$ ${Number(item.val || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
     function handleOpenModal(mode, item = null) {
       modalMode = mode;
       selectedItem = item;
 
-      // Reset UI completo do modal
+      // Reset completo do painel de Modais
       document.getElementById('modal-pay-salary').classList.add('hidden');
       document.getElementById('modal-form-crud').classList.add('hidden');
       document.getElementById('wrapper-venc').classList.add('hidden');
@@ -1006,6 +1121,9 @@
       document.getElementById('wrapper-status').classList.add('hidden');
       document.getElementById('btn-delete').classList.add('hidden');
       document.getElementById('pay-vt-info').classList.add('hidden');
+      document.getElementById('details-read-only').classList.add('hidden');
+      document.getElementById('btn-confirm-pay').classList.remove('hidden');
+      document.getElementById('pay-val').disabled = false;
       
       document.getElementById('btn-save').style.backgroundColor = mode === 'CONTA' ? 'var(--mint)' : 'var(--purple)';
 
@@ -1013,10 +1131,9 @@
         editId = item.id;
         document.getElementById('btn-delete').classList.remove('hidden');
 
+        // MODO 1: EDITAR CONTA (ACESSADO EXCLUSIVAMENTE POR EXTRATO)
         if (mode === 'CONTA') {
-          document.getElementById('modal-title').textContent = 'Editar Conta';
-          
-          // ATUALIZADO: Remove visualmente a tag de variável no formulário para não poluir
+          document.getElementById('modal-title').textContent = 'Editar Despesa';
           let rawDesc = item.desc || '';
           let isVar = rawDesc.includes(' (VAR)');
           let cleanDesc = isVar ? rawDesc.replace(' (VAR)', '') : rawDesc;
@@ -1033,8 +1150,10 @@
           document.getElementById('wrapper-status').classList.remove('hidden');
           document.getElementById('wrapper-bill-type').classList.remove('hidden');
 
+        // MODO 2: CONFIRMAR PAGAMENTO DE SALÁRIO/VT (HOME OU ADIANTAMENTO)
         } else if (mode === 'PAGAR_SALARIO') {
           document.getElementById('modal-title').textContent = 'Confirmar Pagamento';
+          document.getElementById('pay-entity-type-label').textContent = 'NOME DO BENEFICIÁRIO';
           
           let cleanName = (item.desc || '').replace('SALÁRIO: ', '')
                                            .replace('SALÁRIO + VT: ', '')
@@ -1058,6 +1177,62 @@
           document.getElementById('txt-confirm-pay').textContent = isPago ? 'ESTORNAR PAGAMENTO' : 'CONFIRMAR PAGAMENTO';
           document.getElementById('modal-pay-salary').classList.remove('hidden');
 
+        // MODO 3: CONFIRMAR PAGAMENTO DE CONTA/DESPESA (HOME OU ADIANTAMENTO)
+        } else if (mode === 'PAGAR_CONTA') {
+          document.getElementById('modal-title').textContent = 'Quitar Despesa';
+          document.getElementById('pay-entity-type-label').textContent = 'DESCRIÇÃO DA DESPESA';
+          
+          let rawDesc = item.desc || '';
+          let isVar = rawDesc.includes(' (VAR)');
+          let cleanDesc = isVar ? rawDesc.replace(' (VAR)', '') : rawDesc;
+          
+          document.getElementById('pay-name').textContent = cleanDesc;
+          document.getElementById('pay-val').value = item.val || '';
+          document.getElementById('pay-venc').textContent = (item.venc || '').slice(0,5);
+          
+          if (isVar) {
+             const vtInfoEl = document.getElementById('pay-vt-info');
+             vtInfoEl.textContent = '* Esta é uma despesa variável. Ajuste para o valor real cobrado neste mês antes de confirmar se necessário.';
+             vtInfoEl.classList.remove('hidden');
+          }
+
+          const isPago = item.status === 'PAGO';
+          const btnPay = document.getElementById('btn-confirm-pay');
+          btnPay.style.backgroundColor = isPago ? 'var(--slate)' : 'var(--mint)';
+          document.getElementById('txt-confirm-pay').textContent = isPago ? 'ESTORNAR QUITAÇÃO' : 'CONFIRMAR PAGAMENTO';
+          document.getElementById('modal-pay-salary').classList.remove('hidden');
+
+        // MODO 4: APENAS LEITURA PARA SALÁRIOS CLICADOS NO EXTRATO
+        } else if (mode === 'VER_DETALHES_SALARIO') {
+          document.getElementById('modal-title').textContent = 'Detalhes do Lançamento';
+          document.getElementById('pay-entity-type-label').textContent = 'BENEFICIÁRIO DO SALÁRIO';
+          
+          let cleanName = (item.desc || '').replace('SALÁRIO: ', '')
+                                           .replace('SALÁRIO + VT: ', '')
+                                           .replace('VT SEMANAL: ', '')
+                                           .replace(' (PARTE 1)', '')
+                                           .replace(' (PARTE 2)', '')
+                                           .replace(' (P2 + VT)', '');
+          document.getElementById('pay-name').textContent = cleanName;
+          document.getElementById('pay-val').value = item.val || '';
+          document.getElementById('pay-val').disabled = true;
+          document.getElementById('pay-venc').textContent = (item.venc || '').slice(0,5);
+
+          const isPago = paymentHistory[editId] ? true : false;
+          const statusTextEl = document.getElementById('details-status-text');
+          if (isPago) {
+             statusTextEl.textContent = `Status: LIQUIDADO`;
+             statusTextEl.style.color = 'var(--mint)';
+          } else {
+             statusTextEl.textContent = `Status: PENDENTE`;
+             statusTextEl.style.color = 'var(--coral)';
+          }
+
+          document.getElementById('details-read-only').classList.remove('hidden');
+          document.getElementById('btn-confirm-pay').classList.add('hidden'); // Oculta botão de ação direta
+          document.getElementById('modal-pay-salary').classList.remove('hidden');
+
+        // MODO 5: EDITAR COLABORADOR (RH)
         } else if (mode === 'RH') {
           document.getElementById('modal-title').textContent = 'Editar Colaborador';
           document.getElementById('form-desc').value = item.name || '';
@@ -1071,6 +1246,7 @@
           document.getElementById('wrapper-vt').classList.remove('hidden');
         }
       } else {
+        // Fluxo de Cadastro do Zero (FAB)
         editId = null;
         document.getElementById('form-desc').value = '';
         document.getElementById('form-val').value = '';
@@ -1079,7 +1255,6 @@
         if (activeTab === 'inicio') defaultDate = homeDate;
         document.getElementById('form-venc').value = formatDataBR(defaultDate);
         
-        // Inicialização limpa e controlada
         setFormStatus('NO PRAZO');
         setFormFreq('MENSAL');
         setFormVt('NONE');
@@ -1108,7 +1283,6 @@
       else overlay.classList.remove('active');
     }
 
-    // SETTERS EXPLICITOS E SEGUROS DE ESTADO DO FORMULÁRIO (EVITAM CONFLITOS DE CSS)
     function setFormFreq(val) {
       fFreq = val;
       document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
@@ -1123,7 +1297,6 @@
       if (activeBtn) activeBtn.classList.add('active');
     }
 
-    // ATUALIZADO: Inclui ajuda de contexto em tempo real de acordo com o tipo selecionado
     function setFormBillType(val) {
       fBillType = val;
       document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -1146,15 +1319,12 @@
 
     function setFormStatus(val) {
       fStatus = val;
-      
-      // Limpa os estilos inline e classes de todos os botões antes de reatribuir
       document.querySelectorAll('#wrapper-status .status-option').forEach(b => {
         b.classList.remove('active');
         b.style.backgroundColor = 'transparent';
         b.style.borderColor = '#F1F5F9';
         b.style.color = 'var(--slate)';
       });
-
       const activeBtn = document.querySelector(`#wrapper-status .status-option[data-val="${val}"]`);
       if (activeBtn) {
         activeBtn.classList.add('active');
@@ -1164,7 +1334,79 @@
       }
     }
 
-    // --- OPERAÇÕES DO BANCO DE DADOS ---
+    // ==========================================
+    // OPERAÇÕES DO BANCO DE DADOS
+    // ==========================================
+    async function handleConfirmPayBtnClick() {
+      if (modalMode === 'PAGAR_CONTA') {
+        await toggleBillPayment();
+      } else if (modalMode === 'PAGAR_SALARIO') {
+        await togglePayment();
+      }
+    }
+
+    // Executa pagamento de Salários
+    async function togglePayment() {
+      if (!editId || !selectedItem) return;
+      showLoader(true);
+      try {
+        if (paymentHistory[editId]) {
+          await supabase.from('fin_salary_payments').delete().eq('instance_id', editId);
+        } else {
+          const valStr = document.getElementById('pay-val').value || '0';
+          const numVal = parseFloat(valStr.replace(',', '.'));
+          await supabase.from('fin_salary_payments').insert([{
+            employee_id: selectedItem.empId,
+            instance_id: editId,
+            amount_paid: numVal,
+            paid_by: currentUser.id,
+            paid_at: new Date().toISOString()
+          }]);
+        }
+        await fetchData();
+        setModalOpen(false);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showLoader(false);
+      }
+    }
+
+    // Executa quitação direta de despesas na Home ou Adiantados
+    async function toggleBillPayment() {
+      if (!editId || !selectedItem) return;
+      showLoader(true);
+      try {
+        if (selectedItem.status === 'PAGO') {
+          // Estornar: recalcula se deve ser "VENCIDO" ou "NO PRAZO"
+          const [d, m, y] = selectedItem.venc.split('/').map(Number);
+          const vencimento = new Date(y, m - 1, d);
+          const novoStatus = HOJE > vencimento ? 'VENCIDO' : 'NO PRAZO';
+          
+          await supabase.from('fin_bills').update({
+             status: novoStatus,
+             paid_at: null
+          }).eq('id', editId);
+        } else {
+          // Pagar: permite ajuste de valor real para contas variáveis
+          const valStr = document.getElementById('pay-val').value || '0';
+          const numVal = parseFloat(valStr.replace(',', '.'));
+          
+          await supabase.from('fin_bills').update({
+             status: 'PAGO',
+             val: numVal,
+             paid_at: new Date().toISOString()
+          }).eq('id', editId);
+        }
+        await fetchData();
+        setModalOpen(false);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        showLoader(false);
+      }
+    }
+
     async function handleSave() {
       const desc = document.getElementById('form-desc').value;
       const valStr = document.getElementById('form-val').value;
@@ -1176,10 +1418,8 @@
 
       try {
         if (modalMode === 'CONTA') {
-          // Lógica de registro da data de pagamento para contas
           const paidAtValue = fStatus === 'PAGO' ? new Date().toISOString() : null;
 
-          // ATUALIZADO: Adiciona tag invisível (VAR) no nome para distinguir despesas de valor variável sem quebrar o banco
           let finalDesc = desc.toUpperCase();
           if (fBillType === 'FIXED_VAR') {
              if (!finalDesc.includes(' (VAR)')) {
@@ -1234,33 +1474,6 @@
              alert("Erro na operação de RH. Verifique se o schema no Supabase está atualizado.");
              throw res.error;
           }
-        }
-        await fetchData();
-        setModalOpen(false);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        showLoader(false);
-      }
-    }
-
-    async function togglePayment() {
-      if (!editId || !selectedItem) return;
-      showLoader(true);
-      
-      try {
-        if (paymentHistory[editId]) {
-          await supabase.from('fin_salary_payments').delete().eq('instance_id', editId);
-        } else {
-          const valStr = document.getElementById('pay-val').value || '0';
-          const numVal = parseFloat(valStr.replace(',', '.'));
-          await supabase.from('fin_salary_payments').insert([{
-            employee_id: selectedItem.empId,
-            instance_id: editId,
-            amount_paid: numVal,
-            paid_by: currentUser.id,
-            paid_at: new Date().toISOString()
-          }]);
         }
         await fetchData();
         setModalOpen(false);
