@@ -863,29 +863,24 @@
 
       let registrosHome = homeMonthRegistros.filter(item => {
         const isItemDate = formatDataBR(item.rawDate) === strHomeDate;
-        if (isHoje) {
-          return isItemDate || (item.status === 'VENCIDO' && item.status !== 'PAGO');
-        }
-        return isItemDate;
+        return isItemDate || (item.status === 'VENCIDO' && item.status !== 'PAGO');
       });
 
-      // Se for a tela de Hoje, também puxa qualquer conta atrasada de meses anteriores
-      if (isHoje) {
-        contas.forEach(c => {
-          if (!c.venc) return;
-          const [d, m, y] = c.venc.split('/').map(Number);
-          const rawDate = new Date(y, m - 1, d);
-          if (c.status !== 'PAGO' && HOJE > rawDate) {
-            // Se for de outro mês/ano, nós adicionamos porque o getRegistrosFull não pegou
-            if (m !== homeDate.getMonth() + 1 || y !== homeDate.getFullYear()) {
-              registrosHome.push({ ...c, status: 'VENCIDO', tipo: 'CONTA', rawDate: rawDate });
-            }
+      // Também puxa qualquer conta atrasada de meses anteriores, independente do dia selecionado
+      contas.forEach(c => {
+        if (!c.venc) return;
+        const [d, m, y] = c.venc.split('/').map(Number);
+        const rawDate = new Date(y, m - 1, d);
+        if (c.status !== 'PAGO' && HOJE > rawDate) {
+          // Se for de outro mês/ano, adicionamos porque o getRegistrosFull não pegou
+          if (m !== homeDate.getMonth() + 1 || y !== homeDate.getFullYear()) {
+            registrosHome.push({ ...c, status: 'VENCIDO', tipo: 'CONTA', rawDate: rawDate });
           }
-        });
-        
-        // Re-ordena
-        registrosHome.sort((a, b) => a.rawDate - b.rawDate);
-      }
+        }
+      });
+      
+      // Re-ordena
+      registrosHome.sort((a, b) => a.rawDate - b.rawDate);
 
       let totalView = 0; let totalPagoView = 0;
       let listToRender = [];
@@ -1588,16 +1583,26 @@
         
         if (currentUser) {
            const subJson = JSON.parse(JSON.stringify(subscription));
+           const currentEndpoint = subJson.endpoint;
            
-           const { data } = await supabase.from('push_subscriptions').select('id').eq('user_id', currentUser.id);
+           const { data } = await supabase.from('push_subscriptions').select('id, subscription').eq('user_id', currentUser.id);
+           
+           let alreadyExists = false;
            if (data && data.length > 0) {
-              await supabase.from('push_subscriptions').delete().eq('user_id', currentUser.id);
+              for (let row of data) {
+                 if (row.subscription.endpoint === currentEndpoint) {
+                    alreadyExists = true;
+                    break;
+                 }
+              }
            }
            
-           await supabase.from('push_subscriptions').insert([{
-              user_id: currentUser.id,
-              subscription: subJson
-           }]);
+           if (!alreadyExists) {
+              await supabase.from('push_subscriptions').insert([{
+                 user_id: currentUser.id,
+                 subscription: subJson
+              }]);
+           }
         }
       } catch (error) {
         console.error('Falha ao assinar push', error);
