@@ -711,8 +711,13 @@
       contas.forEach(c => {
         if(!c.venc) return;
         const [d, m, y] = c.venc.split('/').map(Number);
+        const rawDate = new Date(y, m - 1, d);
+        let derivedStatus = c.status;
+        if (derivedStatus !== 'PAGO' && HOJE > rawDate) {
+           derivedStatus = 'VENCIDO';
+        }
         if (m === month + 1 && y === year) {
-          list.push({ ...c, tipo: 'CONTA', rawDate: new Date(y, m - 1, d) });
+          list.push({ ...c, status: derivedStatus, tipo: 'CONTA', rawDate: rawDate });
         }
       });
 
@@ -863,6 +868,24 @@
         }
         return isItemDate;
       });
+
+      // Se for a tela de Hoje, também puxa qualquer conta atrasada de meses anteriores
+      if (isHoje) {
+        contas.forEach(c => {
+          if (!c.venc) return;
+          const [d, m, y] = c.venc.split('/').map(Number);
+          const rawDate = new Date(y, m - 1, d);
+          if (c.status !== 'PAGO' && HOJE > rawDate) {
+            // Se for de outro mês/ano, nós adicionamos porque o getRegistrosFull não pegou
+            if (m !== homeDate.getMonth() + 1 || y !== homeDate.getFullYear()) {
+              registrosHome.push({ ...c, status: 'VENCIDO', tipo: 'CONTA', rawDate: rawDate });
+            }
+          }
+        });
+        
+        // Re-ordena
+        registrosHome.sort((a, b) => a.rawDate - b.rawDate);
+      }
 
       let totalView = 0; let totalPagoView = 0;
       let listToRender = [];
@@ -1566,26 +1589,17 @@
         if (currentUser) {
            const subJson = JSON.parse(JSON.stringify(subscription));
            
-           // Vamos verificar o delete e insert com alertas para entender o que falhou
            const { data } = await supabase.from('push_subscriptions').select('id').eq('user_id', currentUser.id);
            if (data && data.length > 0) {
-              const { error: delErr } = await supabase.from('push_subscriptions').delete().eq('user_id', currentUser.id);
-              if (delErr) alert('Erro ao deletar sub antiga: ' + delErr.message);
+              await supabase.from('push_subscriptions').delete().eq('user_id', currentUser.id);
            }
            
-           const { error: insErr } = await supabase.from('push_subscriptions').insert([{
+           await supabase.from('push_subscriptions').insert([{
               user_id: currentUser.id,
               subscription: subJson
            }]);
-           
-           if (insErr) {
-             alert('Erro ao salvar no banco: ' + insErr.message);
-           } else {
-             alert('Inscrição salva com sucesso no banco de dados!');
-           }
         }
       } catch (error) {
-        alert('Falha ao assinar push no celular: ' + error.message);
         console.error('Falha ao assinar push', error);
       }
     }
