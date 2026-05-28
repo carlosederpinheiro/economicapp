@@ -317,6 +317,14 @@
     </div>
   </div>
 
+  <div id="push-banner" class="hidden" style="margin: 15px 20px 0 20px; background: var(--purple); color: white; padding: 15px; border-radius: 16px; align-items: center; justify-content: space-between;">
+    <div>
+      <div style="font-size: 12px; font-weight: 900;">Ativar Notificações</div>
+      <div style="font-size: 9px; font-weight: 600; opacity: 0.9;">Receba alertas de contas pendentes.</div>
+    </div>
+    <button id="btn-enable-push" style="background: white; color: var(--purple); border: none; padding: 8px 12px; border-radius: 10px; font-size: 10px; font-weight: 900; cursor: pointer;">ATIVAR</button>
+  </div>
+
   <div class="content" id="main-content">
   </div>
 
@@ -657,6 +665,7 @@
       });
 
       await fetchData();
+      initPushNotifications();
     });
 
     // ==========================================
@@ -1509,6 +1518,78 @@
           .then(reg => console.log('Service Worker registrado com sucesso!', reg))
           .catch(err => console.error('Falha ao registrar Service Worker', err));
       });
+    }
+
+    // ==========================================
+    // NOTIFICAÇÕES PUSH
+    // ==========================================
+    async function initPushNotifications() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      
+      const permission = Notification.permission;
+      const banner = document.getElementById('push-banner');
+      
+      if (permission === 'default') {
+        banner.style.display = 'flex';
+        banner.classList.remove('hidden');
+      } else if (permission === 'granted') {
+        banner.style.display = 'none';
+        subscribeUserToPush();
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    document.getElementById('btn-enable-push').addEventListener('click', async () => {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        document.getElementById('push-banner').style.display = 'none';
+        subscribeUserToPush();
+      } else {
+        document.getElementById('push-banner').style.display = 'none';
+      }
+    });
+
+    async function subscribeUserToPush() {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          const VAPID_PUBLIC_KEY = 'BGmx8rt6XWGpMLyNnxUJE_8AU_3wfiD7O1OD5kyMU-0eiHpADZ5zd-ds-R9Zroolac3RsfZYg8hKshYO0aGrgjA';
+          const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+        }
+        
+        if (currentUser) {
+           const subJson = JSON.parse(JSON.stringify(subscription));
+           
+           const { data } = await supabase.from('push_subscriptions').select('id').eq('user_id', currentUser.id);
+           if (data && data.length > 0) {
+              await supabase.from('push_subscriptions').delete().eq('user_id', currentUser.id);
+           }
+           
+           await supabase.from('push_subscriptions').insert([{
+              user_id: currentUser.id,
+              subscription: subJson
+           }]);
+        }
+      } catch (error) {
+        console.error('Falha ao assinar push', error);
+      }
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
     }
 
   </script>
