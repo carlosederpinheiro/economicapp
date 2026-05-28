@@ -1,12 +1,12 @@
-const CACHE_NAME = 'exec-pro-v1';
+const CACHE_NAME = 'exec-pro-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './inicio.html',
   './supabase.js',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  './icone192.png',
+  './icone512.png'
 ];
 
 // Instalação do Service Worker e Cache dos ficheiros iniciais
